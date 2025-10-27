@@ -1,11 +1,11 @@
 class InstitutionModel {
-  final String id;
+  final String? id; // nullable, присваивается Supabase
   final String name;
   final String? address;
   final DateTime createdAt;
 
   InstitutionModel({
-    required this.id,
+    this.id,
     required this.name,
     this.address,
     required this.createdAt,
@@ -13,7 +13,7 @@ class InstitutionModel {
 
   factory InstitutionModel.fromJson(Map<String, dynamic> json) {
     return InstitutionModel(
-      id: json['id'] as String,
+      id: json['id'] as String?,
       name: json['name'] as String,
       address: json['address'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -22,7 +22,7 @@ class InstitutionModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      if (id != null) 'id': id, // отправляем только если id уже есть
       'name': name,
       'address': address,
       'created_at': createdAt.toIso8601String(),
