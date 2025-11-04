@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
+import 'package:edu_att/screens/menu_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,10 +17,7 @@ void main() async {
 
   final GoRouter appRouter = GoRouter(
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const PlaceholderScreen(),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const MainMenuScreen()),
     ],
   );
 
