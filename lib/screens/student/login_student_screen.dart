@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class StudentLoginScreen extends ConsumerWidget {
   const StudentLoginScreen({super.key});
@@ -64,14 +65,17 @@ class StudentLoginScreen extends ConsumerWidget {
                       passwordController,
                     ),
                     const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Text(
-                        'Назад в главное меню',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          decoration: TextDecoration.underline,
+                    InkWell(
+                      onTap: () => context.go('/'),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4.0),
+                        child: Text(
+                          'Назад в главное меню',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     ),
@@ -123,19 +127,17 @@ class StudentLoginScreen extends ConsumerWidget {
       height: 60,
       child: ElevatedButton(
         onPressed: () async {
+          print('кнопка тыкнут');
           final success = await ref
               .read(currentStudentProvider.notifier)
               .login(
-                int.tryParse(institutionController.text.trim()) ?? 0,
+                institutionController.text.trim(),
                 emailController.text.trim(),
                 passwordController.text.trim(),
               );
 
           if (success && context.mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-            );
+            print("кнопка тыкнут и саксекс");
           } else {
             ScaffoldMessenger.of(
               context,

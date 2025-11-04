@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:edu_att/screens/menu_screen.dart';
+import 'package:edu_att/screens/student/login_student_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     await dotenv.load(fileName: ".env");
+    print(dotenv.env['SUPABASE_URL']);
+    print(dotenv.env['SUPABASE_ANON_KEY']);
     await SupabaseConfig.init();
   } catch (e, stackTrace) {
     print('Ошибка при инициализации: $e');
@@ -18,10 +22,14 @@ void main() async {
   final GoRouter appRouter = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (context, state) => const MainMenuScreen()),
+      GoRoute(
+        path: '/login/student',
+        builder: (context, state) => const StudentLoginScreen(),
+      ),
     ],
   );
 
-  runApp(EduAttApp(router: appRouter));
+  runApp(ProviderScope(child: EduAttApp(router: appRouter)));
 }
 
 class EduAttApp extends StatelessWidget {
@@ -39,19 +47,6 @@ class EduAttApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routerConfig: router,
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Приложение запущено!', style: TextStyle(fontSize: 24)),
-      ),
     );
   }
 }

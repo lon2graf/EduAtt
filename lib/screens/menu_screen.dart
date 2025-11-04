@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -41,7 +42,7 @@ class MainMenuScreen extends StatelessWidget {
                   icon: Icons.school_rounded,
                   title: 'Войти как студент',
                   onPressed: () {
-                    // context.go('/login/student');
+                    context.go('/login/student');
                   },
                 ),
                 const SizedBox(height: 20),
@@ -56,7 +57,7 @@ class MainMenuScreen extends StatelessWidget {
                 const SizedBox(height: 30),
                 GestureDetector(
                   onTap: () {
-                    // context.go('/offline');
+                    context.go('/offline');
                   },
                   child: const Text(
                     'Продолжить без образовательной организации',

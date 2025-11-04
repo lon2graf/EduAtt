@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StudentServices {
   static Future<StudentModel?> loginStudent(
-    int institutionId,
+    String institutionId,
     String email,
     String password,
   ) async {
@@ -17,10 +17,9 @@ class StudentServices {
               .eq('email', email)
               .eq('password', password)
               .eq('institution_id', institutionId)
-              .limit(1)
-              .maybeSingle();
+              .single();
 
-      if (response == null) return null; // не найден студент
+      //if (response == null) return null; // не найден студент
       return StudentModel.fromJson(response);
     } catch (e) {
       print('Ошибка при входе студента: $e');
