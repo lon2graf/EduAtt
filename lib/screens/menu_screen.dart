@@ -42,7 +42,7 @@ class MainMenuScreen extends StatelessWidget {
                   icon: Icons.school_rounded,
                   title: 'Войти как студент',
                   onPressed: () {
-                    context.go('/login/student');
+                    context.go('/login');
                   },
                 ),
                 const SizedBox(height: 20),

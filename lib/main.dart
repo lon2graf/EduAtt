@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:edu_att/screens/menu_screen.dart';
 import 'package:edu_att/screens/student/login_student_screen.dart';
+import 'package:edu_att/screens/student/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,8 +24,12 @@ void main() async {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const MainMenuScreen()),
       GoRoute(
-        path: '/login/student',
+        path: '/login',
         builder: (context, state) => const StudentLoginScreen(),
+      ),
+      GoRoute(
+        path: '/student/home',
+        builder: (context, state) => const StudentHomeScreen(),
       ),
     ],
   );

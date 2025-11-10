@@ -138,6 +138,15 @@ class StudentLoginScreen extends ConsumerWidget {
 
           if (success && context.mounted) {
             print("кнопка тыкнут и саксекс");
+
+            final student = ref.watch(currentStudentProvider);
+
+            if (student != null && !student.isHeadman) {
+              context.go('/student/home');
+            } else {
+              print("староста");
+              context.go('');
+            }
           } else {
             ScaffoldMessenger.of(
               context,
