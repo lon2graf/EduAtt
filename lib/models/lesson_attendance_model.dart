@@ -1,28 +1,56 @@
 class LessonAttendanceModel {
-  final int? id; // nullable, присваивается Supabase
+  final int? id;
   final int lessonId;
   final String studentId;
   final String? status;
+
+  final DateTime? lessonDate;
+  final String? lessonStart;
+  final String? lessonEnd;
+  final String? subjectName;
+  final String? teacherName;
+  final String? teacherSurname;
 
   LessonAttendanceModel({
     this.id,
     required this.lessonId,
     required this.studentId,
     this.status,
+    this.lessonDate,
+    this.lessonStart,
+    this.lessonEnd,
+    this.subjectName,
+    this.teacherName,
+    this.teacherSurname,
   });
 
-  factory LessonAttendanceModel.fromJson(Map<String, dynamic> json) {
+  factory LessonAttendanceModel.fromNestedJson(Map<String, dynamic> json) {
+    final lesson = json["lessons"] as Map<String, dynamic>? ?? {};
+    final schedule = lesson["schedule"] as Map<String, dynamic>? ?? {};
+    final subject = schedule["subjects"] as Map<String, dynamic>? ?? {};
+    final teacher = schedule["teachers"] as Map<String, dynamic>? ?? {};
+
     return LessonAttendanceModel(
-      id: json['id'] as int?,
-      lessonId: json['lesson_id'] as int,
-      studentId: json['student_id'] as String,
-      status: json['status'] as String?,
+      id: json["id"] as int?,
+      lessonId: json["lesson_id"] as int,
+      studentId: json["student_id"].toString(),
+      status: json["status"] as String?,
+
+      lessonDate:
+          schedule["date"] != null ? DateTime.tryParse(schedule["date"]) : null,
+
+      lessonStart: schedule["start_time"] as String?,
+      lessonEnd: schedule["end_time"] as String?,
+
+      subjectName: subject["name"] as String?,
+      teacherName: teacher["name"] as String?,
+      teacherSurname: teacher["surname"] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id, // отправляем только если id уже есть
+      if (id != null) 'id': id,
       'lesson_id': lessonId,
       'student_id': studentId,
       'status': status,

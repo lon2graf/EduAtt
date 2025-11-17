@@ -1,3 +1,5 @@
+import 'package:edu_att/models/lesson_attendance_model.dart';
+import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';

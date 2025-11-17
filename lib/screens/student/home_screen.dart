@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:edu_att/services/lessons_attendace_service.dart';
 
 class StudentHomeScreen extends ConsumerWidget {
   const StudentHomeScreen({super.key});
@@ -30,7 +31,14 @@ class StudentHomeScreen extends ConsumerWidget {
             child: RefreshIndicator(
               onRefresh: () async {
                 // В будущем: вызов метода провайдера для обновления данных
-                await Future.delayed(const Duration(seconds: 1));
+                //await Future.delayed(const Duration(seconds: 1));
+                if (student != null && student.id != null) {
+                  await LessonsAttendanceService.GetAllStudentAttendaces(
+                    student.id!,
+                  );
+                } else {
+                  print("нет студента");
+                }
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
