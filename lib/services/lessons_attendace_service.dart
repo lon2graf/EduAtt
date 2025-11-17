@@ -46,4 +46,69 @@ class LessonsAttendanceService {
       return [];
     }
   }
+
+  static List<LessonAttendanceModel> filterAttendancesByDate(
+    List<LessonAttendanceModel> allAttendances,
+    DateTime date,
+  ) {
+    return allAttendances.where((attendance) {
+      return attendance.lessonDate != null &&
+          attendance.lessonDate!.year == date.year &&
+          attendance.lessonDate!.month == date.month &&
+          attendance.lessonDate!.day == date.day;
+    }).toList();
+  }
+
+  static double calculateAttendancePercentageForMonth(
+    List<LessonAttendanceModel> allAttendances,
+    DateTime monthDate,
+  ) {
+    // Фильтруем занятия, которые были в указанном месяце
+    final List<LessonAttendanceModel> monthlyAttendances =
+        allAttendances
+            .where(
+              (attendance) =>
+                  attendance.lessonDate != null &&
+                  attendance.lessonDate!.year == monthDate.year &&
+                  attendance.lessonDate!.month == monthDate.month,
+            )
+            .toList();
+
+    if (monthlyAttendances.isEmpty) {
+      return 0.0; // Если занятий не было, возвращаем 0%
+    }
+
+    // Считаем количество занятий, на которых студент присутствовал
+    final int presentCount =
+        monthlyAttendances
+            .where(
+              (attendance) => attendance.status?.toLowerCase() == 'present',
+            )
+            .length;
+
+    // Общее количество занятий
+    final int totalCount = monthlyAttendances.length;
+
+    // Рассчитываем процент
+    return (presentCount / totalCount) * 100.0;
+  }
+
+  // --- НОВЫЙ СТАТИЧЕСКИЙ МЕТОД ДЛЯ ПОДСЧЕТА КОЛИЧЕСТВА ПРОПУСКОВ ЗА МЕСЯЦ ---
+  /// Считает количество отсутствий ('absent') за указанный месяц.
+  /// [allAttendances] - список всех посещений студента.
+  /// [monthDate] - любая дата в нужном месяце.
+  static int countAbsencesForMonth(
+    List<LessonAttendanceModel> allAttendances,
+    DateTime monthDate,
+  ) {
+    return allAttendances
+        .where(
+          (attendance) =>
+              attendance.status?.toLowerCase() == 'absent' &&
+              attendance.lessonDate != null &&
+              attendance.lessonDate!.year == monthDate.year &&
+              attendance.lessonDate!.month == monthDate.month,
+        )
+        .length;
+  }
 }

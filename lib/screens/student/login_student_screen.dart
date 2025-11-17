@@ -81,6 +81,28 @@ class StudentLoginScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+
+                    GestureDetector(
+                      onTap: () {
+                        // Автоматически заполняем поля тестовыми данными
+                        institutionController.text =
+                            '73ba4892-2449-4a4f-bf93-30c222965b59';
+                        emailController.text = 'roman.t@kfu.ru';
+                        passwordController.text = 'pass123';
+                      },
+                      // Делаем кнопку невидимой, но она по-прежнему реагирует на нажатие
+                      child: Opacity(
+                        opacity: 1.0, // Полностью прозрачная
+                        child: Container(
+                          width:
+                              100, // Произвольный размер для удобства тестирования
+                          height: 50,
+                          color:
+                              Colors
+                                  .red, // Цвет для визуального отладки (можно удалить)
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -143,11 +165,8 @@ class StudentLoginScreen extends ConsumerWidget {
 
             final student = ref.watch(currentStudentProvider);
 
-            if (student != null && !student.isHeadman) {
+            if (student != null) {
               context.go('/student/home');
-            } else {
-              print("староста");
-              context.go('');
             }
           } else {
             ScaffoldMessenger.of(
