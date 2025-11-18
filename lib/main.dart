@@ -1,3 +1,4 @@
+import 'package:edu_att/screens/student/lesson_attendance_mark_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -30,6 +31,10 @@ void main() async {
       GoRoute(
         path: '/student/home',
         builder: (context, state) => const StudentHomeScreen(),
+      ),
+      GoRoute(
+        path: '/student/mark',
+        builder: (context, state) => const AttendanceMarkScreen(),
       ),
     ],
   );

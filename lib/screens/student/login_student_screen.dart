@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:edu_att/providers/lesson_attendance_provider.dart';
+import 'package:edu_att/providers/current_lesson_provider.dart';
 
 class StudentLoginScreen extends ConsumerWidget {
   const StudentLoginScreen({super.key});
@@ -19,46 +21,60 @@ class StudentLoginScreen extends ConsumerWidget {
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF5A00FF), Color(0xFF0078FF), Color(0xFF00C6FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF4A148C), // Глубокий фиолетовый
+              Color(0xFF6A1B9A), // Темно-фиолетовый
+              Color(0xFF7B1FA2), // Ярче посередине
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: Container(
-          decoration: BoxDecoration(color: Colors.black.withOpacity(0.15)),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+          ), // Вуаль
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20), // Уменьшены отступы
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Вход студента',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 38,
+                        fontSize: 34, // Уменьшен шрифт заголовка
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.0, // Уменьшена ширина
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 40), // Уменьшен отступ
                     _buildTextField(
                       controller: institutionController,
                       hintText: 'ID образовательной организации',
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18), // Уменьшен отступ
                     _buildTextField(
                       controller: emailController,
                       hintText: 'Email',
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18), // Уменьшен отступ
                     _buildTextField(
                       controller: passwordController,
                       hintText: 'Пароль',
                       obscureText: true,
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 36), // Уменьшен отступ
                     _buildLoginButton(
                       context,
                       ref,
@@ -66,7 +82,7 @@ class StudentLoginScreen extends ConsumerWidget {
                       emailController,
                       passwordController,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18), // Уменьшен отступ
                     InkWell(
                       onTap: () => context.go('/'),
                       child: const Padding(
@@ -74,14 +90,18 @@ class StudentLoginScreen extends ConsumerWidget {
                         child: Text(
                           'Назад в главное меню',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
+                            color: Colors.white60, // Светлее
+                            fontSize: 15, // Уменьшен шрифт
                             decoration: TextDecoration.underline,
+                            decorationColor:
+                                Colors.white30, // Светлее подчёркивание
+                            decorationThickness: 1.2,
                           ),
                         ),
                       ),
                     ),
 
+                    // --- Кнопка автозаполнения (прозрачная) ---
                     GestureDetector(
                       onTap: () {
                         // Автоматически заполняем поля тестовыми данными
@@ -92,14 +112,12 @@ class StudentLoginScreen extends ConsumerWidget {
                       },
                       // Делаем кнопку невидимой, но она по-прежнему реагирует на нажатие
                       child: Opacity(
-                        opacity: 1.0, // Полностью прозрачная
+                        opacity: 0.0, // Полностью прозрачная
                         child: Container(
                           width:
                               100, // Произвольный размер для удобства тестирования
                           height: 50,
-                          color:
-                              Colors
-                                  .red, // Цвет для визуального отладки (можно удалить)
+                          color: Colors.transparent, // Цвет убран
                         ),
                       ),
                     ),
@@ -121,19 +139,33 @@ class StudentLoginScreen extends ConsumerWidget {
     return TextField(
       controller: controller,
       obscureText: obscureText,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 16, // Уменьшен шрифт
+      ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(
+          color: Colors.white60, // Светлее
+          fontSize: 15, // Уменьшен шрифт
+        ),
         filled: true,
-        fillColor: Colors.black.withOpacity(0.3),
+        fillColor: Colors.white.withOpacity(0.14), // Светлее фон поля
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14), // Уменьшено скругление
           borderSide: BorderSide.none,
         ),
+        focusedBorder: OutlineInputBorder(
+          // Обводка при фокусе
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.4), // Цвет обводки при фокусе
+            width: 1.2,
+          ),
+        ),
         contentPadding: const EdgeInsets.symmetric(
-          vertical: 18,
-          horizontal: 20,
+          vertical: 16, // Уменьшены внутренние отступы
+          horizontal: 18,
         ),
       ),
     );
@@ -147,8 +179,8 @@ class StudentLoginScreen extends ConsumerWidget {
     TextEditingController passwordController,
   ) {
     return SizedBox(
-      width: 280,
-      height: 60,
+      width: 260, // Уменьшена ширина
+      height: 56, // Уменьшена высота
       child: ElevatedButton(
         onPressed: () async {
           print('кнопка тыкнут');
@@ -161,11 +193,17 @@ class StudentLoginScreen extends ConsumerWidget {
               );
 
           if (success && context.mounted) {
-            print("кнопка тыкнут и саксекс");
+            print("кнопка тыкнут и саксесс");
 
             final student = ref.watch(currentStudentProvider);
 
             if (student != null) {
+              await ref
+                  .read(attendanceProvider.notifier)
+                  .loadStudentAttendances(student.id!);
+              await ref
+                  .read(currentLessonProvider.notifier)
+                  .loadCurrentLesson(student.groupId);
               context.go('/student/home');
             }
           } else {
@@ -175,17 +213,20 @@ class StudentLoginScreen extends ConsumerWidget {
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.deepPurple,
-          elevation: 10,
-          shadowColor: Colors.black45,
+          backgroundColor: Colors.purple.shade700, // Фиолетовый стиль
+          foregroundColor: Colors.white,
+          elevation: 6, // Уменьшена тень
+          shadowColor: Colors.black.withOpacity(0.15),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16), // Уменьшено скругление
           ),
         ),
         child: const Text(
           'Войти',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 17, // Уменьшен шрифт
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

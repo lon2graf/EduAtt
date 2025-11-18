@@ -8,19 +8,18 @@ import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/group_provider.dart';
+import 'package:edu_att/providers/current_lesson_provider.dart';
 
 class HomeContentScreen extends ConsumerWidget {
-  const HomeContentScreen({super.key}); // Добавим ключ
+  const HomeContentScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final student = ref.watch(currentStudentProvider);
-    // Получаем все данные посещаемости из провайдера
     final List<LessonAttendanceModel> allAttendances = ref.watch(
       attendanceProvider,
     );
 
-    // Рассчитываем статистику для текущего месяца
     final DateTime now = DateTime.now();
     final double attendancePercentage =
         LessonsAttendanceService.calculateAttendancePercentageForMonth(
@@ -32,185 +31,215 @@ class HomeContentScreen extends ConsumerWidget {
       now,
     );
 
-    // Форматируем процент для отображения (например, "85.7%")
     String formattedPercentage = attendancePercentage.toStringAsFixed(1);
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF5A00FF), Color(0xFF0078FF), Color(0xFF00C6FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(color: Colors.black.withOpacity(0.15)),
-        child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              if (student != null && student.id != null) {
-                await ref
-                    .read(attendanceProvider.notifier)
-                    .loadStudentAttendances(student.id!);
-              }
-            },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 🔹 Приветствие
-                  Text(
-                    'Привет, ${student?.name ?? 'Студент'}! 😊',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+    // Теперь используем LayoutBuilder, чтобы растянуть градиент на всё пространство
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: double.infinity,
+          height: constraints.maxHeight, // Растягиваем на всю высоту
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF4A148C), // Глубокий фиолетовый
+                Color(0xFF6A1B9A), // Темно-фиолетовый
+                Color(0xFF7B1FA2), // Ярче посередине
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
+            child: SafeArea(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (student != null && student.id != null) {
+                    await ref
+                        .read(attendanceProvider.notifier)
+                        .loadStudentAttendances(student.id!);
+                    await ref
+                        .read(currentLessonProvider.notifier)
+                        .loadCurrentLesson(student.groupId);
+                  }
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 🔹 Приветствие
+                      Text(
+                        'Привет, ${student?.name ?? 'Студент'}! 😊',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
 
-                  // 🔹 Краткая статистика (с реальными данными)
-                  _buildCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Статистика за месяц',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      // 🔹 Краткая статистика
+                      _buildCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Статистика за месяц',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _StatItem(
+                              label: 'Пропущено:',
+                              value: '${absencesCount.toString()}',
+                            ),
+                            const SizedBox(height: 4),
+                            _StatItem(
+                              label: 'Посещаемость:',
+                              value: '$formattedPercentage%',
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 10),
-                        _StatItem(
-                          label: 'Пропущено:',
-                          value: absencesCount.toString(),
-                        ),
-                        const SizedBox(height: 6),
-                        _StatItem(
-                          label: 'Посещаемость:',
-                          value: '$formattedPercentage%',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 20),
 
-                  // 🔹 Текущее занятие
-                  _buildSectionTitle('Текущее занятие'),
-                  const SizedBox(height: 12),
-                  _buildCurrentLessonCard(student, ref), // Передаем student
-                ],
+                      // 🔹 Текущее занятие
+                      _buildSectionTitle('Текущее занятие'),
+                      const SizedBox(height: 10),
+                      _buildCurrentLessonCard(student, ref, context),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  // Новый виджет для карточки текущего занятия (теперь с логикой для старосты)
-  Widget _buildCurrentLessonCard(StudentModel? student, WidgetRef ref) {
-    // Принимает StudentModel?
-    // Здесь можно добавить логику для определения текущего занятия
-    // Пока что заглушка
-    const String subject = 'Математика';
-    const String time = '09:00 - 10:30';
-    const String teacher = 'Иванов И.И.';
-    const String status = 'Присутствует'; // или 'Отсутствует', 'Опаздывает'
+  Widget _buildCurrentLessonCard(
+    StudentModel? student,
+    WidgetRef ref,
+    BuildContext context,
+  ) {
+    final lesson = ref.watch(currentLessonProvider);
 
+    if (lesson == null) {
+      return _buildCard(
+        child: const Center(
+          child: Text(
+            'Сегодня занятий нет',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    // Форматируем время: убираем секунды
+    String formattedStartTime = _formatTime(lesson.startTime);
+    String formattedEndTime = _formatTime(lesson.endTime);
+
+    // Собираем имя и фамилию преподавателя
+    String teacherFullName =
+        '${lesson.teacherName ?? ''} ${lesson.teacherSurname ?? ''}'.trim();
+
+    if (teacherFullName.isEmpty) {
+      teacherFullName = 'Не указан';
+    }
+
+    const String status = 'Присутствует';
     Color statusColor = status == 'Присутствует' ? Colors.green : Colors.red;
 
-    // Определяем, нужно ли показывать кнопку "Отметить"
-    bool showMarkButton =
-        student?.isHeadman ==
-        true; // Проверяем, является ли пользователь старостой
+    bool showMarkButton = student?.isHeadman == true;
 
     return _buildCard(
-      height:
-          showMarkButton
-              ? 200
-              : 160, // Увеличиваем высоту, если кнопка отображается
+      height: showMarkButton ? 180 : 140,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center, // Центрируем вертикально
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  subject,
+                  lesson.subjectName ?? 'Предмет',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   status,
                   style: TextStyle(
                     color: statusColor,
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            time,
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
+            '$formattedStartTime - $formattedEndTime',
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
-            'Преподаватель: $teacher',
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
+            'Преподаватель: $teacherFullName',
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
-          // --- Условная кнопка "Отметить посещаемость" ---
           if (showMarkButton) ...[
-            const SizedBox(height: 8), // Отступ перед кнопкой
+            const SizedBox(height: 6),
             Align(
-              // Выравнивание кнопки
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
                 onPressed: () async {
                   if (student != null) {
                     ref
                         .read(groupStudentsProvider.notifier)
-                        .loadGroupStudents(
-                          student.groupId,
-                        ); // Теперь student не null, можно использовать !.
-                    await LessonService.getCurrentLesson(student.groupId);
+                        .loadGroupStudents(student.groupId);
+                    context.go('/student/mark');
                     print('Нажата кнопка "Отметить посещаемость"');
-                  } else {
-                    print(
-                      'Ошибка: студент не определен при нажатии кнопки "Отметить"',
-                    );
                   }
                 },
-                icon: const Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 18,
-                ), // Иконка
-                label: const Text('Отметить посещаемость группы'),
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                label: const Text('Отметить', style: TextStyle(fontSize: 14)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.withOpacity(0.8), // Цвет кнопки
-                  foregroundColor: Colors.white, // Цвет текста/иконки
+                  backgroundColor: Colors.purple.shade700,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  shadowColor: Colors.black.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8), // Скругления
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                 ),
               ),
@@ -221,22 +250,32 @@ class HomeContentScreen extends ConsumerWidget {
     );
   }
 
-  // Вспомогательный виджет для строки статистики
+  // Вспомогательный метод для форматирования времени
+  String _formatTime(String? timeString) {
+    if (timeString == null || timeString.isEmpty) return '--:--';
+    List<String> parts = timeString.split(':');
+    if (parts.length >= 2) {
+      return '${parts[0]}:${parts[1]}'; // Возвращаем HH:mm
+    }
+    return timeString; // Если формат непонятный, возвращаем как есть
+  }
+
   Widget _buildCard({required Widget child, double? height}) {
     return Container(
       width: double.infinity,
       height: height,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 6,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.8),
       ),
       child: child,
     );
@@ -245,16 +284,22 @@ class HomeContentScreen extends ConsumerWidget {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         color: Colors.white,
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        shadows: [
+          Shadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
     );
   }
 }
 
-// Вспомогательный виджет для строки статистики
 class _StatItem extends StatelessWidget {
   final String label;
   final String value;
@@ -268,14 +313,20 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 16),
+          style: TextStyle(
+            // Убран const
+            color: Colors.white60,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
+            // Убран const
             color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

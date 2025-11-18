@@ -2,6 +2,19 @@ import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LessonsAttendanceService {
+  static Future<void> saveAttendances(
+    List<LessonAttendanceModel> attendances,
+  ) async {
+    final supClient = Supabase.instance.client;
+    final data = attendances.map((e) => e.toJson()).toList();
+
+    try {
+      await supClient.from('lesson_attendances').upsert(data);
+    } catch (e) {
+      throw Exception('Не удалось сохранить посещаемость: $e');
+    }
+  }
+
   static Future<List<LessonAttendanceModel>> GetAllStudentAttendaces(
     String id,
   ) async {
@@ -93,10 +106,6 @@ class LessonsAttendanceService {
     return (presentCount / totalCount) * 100.0;
   }
 
-  // --- НОВЫЙ СТАТИЧЕСКИЙ МЕТОД ДЛЯ ПОДСЧЕТА КОЛИЧЕСТВА ПРОПУСКОВ ЗА МЕСЯЦ ---
-  /// Считает количество отсутствий ('absent') за указанный месяц.
-  /// [allAttendances] - список всех посещений студента.
-  /// [monthDate] - любая дата в нужном месяце.
   static int countAbsencesForMonth(
     List<LessonAttendanceModel> allAttendances,
     DateTime monthDate,

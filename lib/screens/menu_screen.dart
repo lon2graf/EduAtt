@@ -12,62 +12,61 @@ class MainMenuScreen extends StatelessWidget {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFF5A00FF), // яркий фиолетовый
-              Color(0xFF0078FF), // насыщенный синий
-              Color(0xFF00C6FF), // голубой оттенок
+              Color(0xFF4A148C), // Глубокий фиолетовый
+              Color(0xFF6A1B9A), // Темно-фиолетовый
+              Color(0xFF7B1FA2), // Ярче посередине
             ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: Container(
-          // полупрозрачная вуаль для читаемости контента
-          decoration: BoxDecoration(color: Colors.black.withOpacity(0.15)),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06), // Ещё более прозрачный
+          ),
           child: SafeArea(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                // Логотип — чуть меньше, но всё ещё выразительно
+                Text(
                   'EduAtt',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 46,
+                    fontSize: 48, // Уменьшено с 56 → 48
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
+                    letterSpacing: 1.6, // Уменьшено
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 6, // Уменьшено
+                        offset: Offset(0, 3), // Уменьшено
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 60),
+                const SizedBox(height: 48), // Уменьшено с 80 → 48
+                // Кнопка "Студент"
                 _buildMenuButton(
                   context,
                   icon: Icons.school_rounded,
-                  title: 'Войти как студент',
+                  title: 'Вход студента',
                   onPressed: () {
                     context.go('/login');
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 20), // Уменьшено с 32 → 20
+                // Кнопка "Преподаватель"
                 _buildMenuButton(
                   context,
                   icon: Icons.person_rounded,
-                  title: 'Войти как преподаватель',
+                  title: 'Вход преподавателя',
                   onPressed: () {
                     // context.go('/login/teacher');
                   },
                 ),
-                const SizedBox(height: 30),
-                GestureDetector(
-                  onTap: () {
-                    context.go('/offline');
-                  },
-                  child: const Text(
-                    'Продолжить без образовательной организации',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
+                // Ссылка "Продолжить без организации" — удалена
               ],
             ),
           ),
@@ -83,22 +82,40 @@ class MainMenuScreen extends StatelessWidget {
     required VoidCallback onPressed,
   }) {
     return SizedBox(
-      width: 280,
-      height: 60,
+      width: 260, // Уменьшено с 300 → 260
+      height: 60, // Уменьшено с 72 → 60
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 26),
+        icon: Icon(
+          icon,
+          size: 26, // Уменьшено с 32 → 26
+          color: Colors.white,
+        ),
         label: Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 18, // Уменьшено с 20 → 18
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.deepPurple,
-          elevation: 10,
-          shadowColor: Colors.black45,
+          backgroundColor: Colors.white.withOpacity(
+            0.12,
+          ), // Уменьшена прозрачность фона
+          foregroundColor: Colors.white,
+          elevation: 6, // Уменьшена тень
+          shadowColor: Colors.black.withOpacity(0.12), // Уменьшена тень
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16), // Уменьшено скругление
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 12,
+          ), // Уменьшены отступы
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.15), // Тонкая обводка
+            width: 0.8, // Уже
           ),
         ),
       ),

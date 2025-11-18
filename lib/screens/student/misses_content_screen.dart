@@ -4,11 +4,11 @@ import 'package:edu_att/providers/student_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
-import 'package:edu_att/models/lesson_attendance_model.dart'; // Импортируем модель
+import 'package:edu_att/models/lesson_attendance_model.dart';
 
 // Вкладка "Посещаемость"
 class MissesContentScreen extends ConsumerStatefulWidget {
-  const MissesContentScreen({super.key}); // Добавим ключ
+  const MissesContentScreen({super.key});
 
   @override
   ConsumerState<MissesContentScreen> createState() =>
@@ -16,10 +16,8 @@ class MissesContentScreen extends ConsumerStatefulWidget {
 }
 
 class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
-  // Хранит выбранную дату
-  DateTime _selectedDate = DateTime.now(); // По умолчанию - сегодня
+  DateTime _selectedDate = DateTime.now();
 
-  // Функция для переключения на предыдущий день
   void _goToPreviousDay() {
     setState(() {
       _selectedDate = DateTime(
@@ -30,7 +28,6 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     });
   }
 
-  // Функция для переключения на следующий день
   void _goToNextDay() {
     setState(() {
       _selectedDate = DateTime(
@@ -41,13 +38,12 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     });
   }
 
-  // Функция для открытия календаря и выбора даты
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(2020), // Минимальная дата для выбора
-      lastDate: DateTime(2030), // Максимальная дата для выбора
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -58,86 +54,93 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Получаем все данные посещаемости из провайдера (просто List)
     final List<LessonAttendanceModel> allAttendances = ref.watch(
       attendanceProvider,
     );
     final student = ref.watch(currentStudentProvider);
 
-    // Фильтруем все записи для выбранной даты (все статусы)
     List<LessonAttendanceModel> filteredRecords =
         LessonsAttendanceService.filterAttendancesByDate(
           allAttendances,
           _selectedDate,
-        ); // Без параметра status
+        );
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF5A00FF), Color(0xFF0078FF), Color(0xFF00C6FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(color: Colors.black.withOpacity(0.15)),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // --- Верхняя панель навигации по датам ---
-              _buildDateNavigationHeader(),
-              const SizedBox(height: 16), // Отступ между панелью и списком
-              // --- Список записей о посещаемости ---
-              Expanded(
-                child: RefreshIndicator(
-                  // Добавим возможность обновления
-                  onRefresh: () async {
-                    if (student != null && student.id != null) {
-                      await ref
-                          .read(attendanceProvider.notifier)
-                          .loadStudentAttendances(student.id!);
-                    }
-                  },
-                  child: _buildAttendanceList(filteredRecords),
-                ),
-              ),
-            ],
+    // Используем LayoutBuilder, чтобы растянуть градиент на всё пространство
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: double.infinity,
+          height: constraints.maxHeight, // Растягиваем на всю высоту
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF4A148C), // Глубокий фиолетовый
+                Color(0xFF6A1B9A), // Темно-фиолетовый
+                Color(0xFF7B1FA2), // Ярче посередине
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.5, 1.0],
+            ),
           ),
-        ),
-      ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+            ), // Вуаль
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildDateNavigationHeader(),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        if (student != null && student.id != null) {
+                          await ref
+                              .read(attendanceProvider.notifier)
+                              .loadStudentAttendances(student.id!);
+                        }
+                      },
+                      child: _buildAttendanceList(filteredRecords),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  // Вспомогательный метод для построения верхней панели
   Widget _buildDateNavigationHeader() {
+    // ... (всё то же самое)
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             onPressed: _goToPreviousDay,
-            icon: const Icon(Icons.chevron_left, size: 40, color: Colors.white),
-            // Увеличиваем область нажатия
-            padding: const EdgeInsets.all(8.0),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.chevron_left, size: 36, color: Colors.white),
+            padding: const EdgeInsets.all(6.0),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
-          // Центральная дата - тапабельный элемент
           Expanded(
             child: GestureDetector(
-              onTap: _selectDate, // Открывает календарь
+              onTap: _selectDate,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
+                  vertical: 10,
+                  horizontal: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25), // Светлее фон
-                  borderRadius: BorderRadius.circular(14), // Скругления
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                  ), // Тонкая обводка
+                    color: Colors.white.withOpacity(0.2),
+                    width: 0.8,
+                  ),
                 ),
                 child: Center(
                   child: Column(
@@ -147,7 +150,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                         '${_getWeekdayName(_selectedDate.weekday).toUpperCase()}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -155,8 +158,8 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                         '${_selectedDate.day} ${_getMonthName(_selectedDate.month).toUpperCase()}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -169,31 +172,32 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
             onPressed: _goToNextDay,
             icon: const Icon(
               Icons.chevron_right,
-              size: 40,
+              size: 36,
               color: Colors.white,
             ),
-            // Увеличиваем область нажатия
-            padding: const EdgeInsets.all(8.0),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            padding: const EdgeInsets.all(6.0),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
       ),
     );
   }
 
-  // Вспомогательный метод для построения списка посещаемости
   Widget _buildAttendanceList(List<LessonAttendanceModel> records) {
     if (records.isEmpty) {
-      // Показываем сообщение, если нет данных за выбранный день
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.calendar_today_outlined, size: 64, color: Colors.white),
-            SizedBox(height: 16),
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 56,
+              color: Colors.white60,
+            ),
+            SizedBox(height: 14),
             Text(
               'Нет данных за эту дату',
-              style: TextStyle(color: Colors.white70, fontSize: 18),
+              style: TextStyle(color: Colors.white60, fontSize: 16),
               textAlign: TextAlign.center,
             ),
           ],
@@ -201,11 +205,10 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
       );
     }
 
-    // Возвращаем ListView с карточками посещаемости
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       itemCount: records.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final record = records[index];
         return _buildAttendanceCard(record);
@@ -213,9 +216,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     );
   }
 
-  // Вспомогательный метод для построения карточки посещаемости
   Widget _buildAttendanceCard(LessonAttendanceModel record) {
-    // Определяем цвет и текст статуса
     Color statusColor;
     String statusText;
     IconData statusIcon;
@@ -239,18 +240,16 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.15), // Фон на основе статуса
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: statusColor.withOpacity(0.3),
-        ), // Обводка на основе статуса
+        color: statusColor.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withOpacity(0.2), width: 0.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -260,50 +259,49 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: statusColor,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(statusIcon, color: Colors.white, size: 20),
+                child: Icon(statusIcon, color: Colors.white, size: 18),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   record.subjectName ?? 'Предмет не указан',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             '${record.lessonStart ?? '??'} - ${record.lessonEnd ?? '??'}',
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             'Преподаватель: ${record.teacherName ?? ''} ${record.teacherSurname ?? ''}',
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
-          // Статус занятия
           const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: statusColor.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               statusText,
               style: TextStyle(
                 color: statusColor,
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -313,23 +311,22 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     );
   }
 
-  // Вспомогательные методы для форматирования даты
   String _getWeekdayName(int weekday) {
     switch (weekday) {
       case 1:
-        return 'Понедельник';
+        return 'Пн';
       case 2:
-        return 'Вторник';
+        return 'Вт';
       case 3:
-        return 'Среда';
+        return 'Ср';
       case 4:
-        return 'Четверг';
+        return 'Чт';
       case 5:
-        return 'Пятница';
+        return 'Пт';
       case 6:
-        return 'Суббота';
+        return 'Сб';
       case 7:
-        return 'Воскресенье';
+        return 'Вс';
       default:
         return '';
     }
@@ -338,29 +335,29 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   String _getMonthName(int month) {
     switch (month) {
       case 1:
-        return 'Января';
+        return 'Янв';
       case 2:
-        return 'Февраля';
+        return 'Фев';
       case 3:
-        return 'Марта';
+        return 'Мар';
       case 4:
-        return 'Апреля';
+        return 'Апр';
       case 5:
-        return 'Мая';
+        return 'Май';
       case 6:
-        return 'Июня';
+        return 'Июн';
       case 7:
-        return 'Июля';
+        return 'Июл';
       case 8:
-        return 'Августа';
+        return 'Авг';
       case 9:
-        return 'Сентября';
+        return 'Сен';
       case 10:
-        return 'Октября';
+        return 'Окт';
       case 11:
-        return 'Ноября';
+        return 'Ноя';
       case 12:
-        return 'Декабря';
+        return 'Дек';
       default:
         return '';
     }

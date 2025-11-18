@@ -2,7 +2,8 @@ class LessonAttendanceModel {
   final int? id;
   final int lessonId;
   final String studentId;
-  final String? status;
+  final String? studentName; // новое поле
+  String? status;
 
   final DateTime? lessonDate;
   final String? lessonStart;
@@ -15,6 +16,7 @@ class LessonAttendanceModel {
     this.id,
     required this.lessonId,
     required this.studentId,
+    this.studentName, // добавили сюда
     this.status,
     this.lessonDate,
     this.lessonStart,
@@ -34,14 +36,13 @@ class LessonAttendanceModel {
       id: json["id"] as int?,
       lessonId: json["lesson_id"] as int,
       studentId: json["student_id"].toString(),
+      studentName: json["student_name"] as String?, // просто добавили
       status: json["status"] as String?,
 
       lessonDate:
           schedule["date"] != null ? DateTime.tryParse(schedule["date"]) : null,
-
       lessonStart: schedule["start_time"] as String?,
       lessonEnd: schedule["end_time"] as String?,
-
       subjectName: subject["name"] as String?,
       teacherName: teacher["name"] as String?,
       teacherSurname: teacher["surname"] as String?,

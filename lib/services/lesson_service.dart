@@ -18,22 +18,26 @@ class LessonService {
         await supClient
             .from('lessons')
             .select('''
-        id,
-        topic,
-        schedule!inner (
-          id,
-          date,
-          start_time,
-          end_time,
-          group_id,
-          subject_id,
-          teacher_id
+      id,
+      topic,
+      schedule!inner (
+        date,
+        start_time,
+        end_time,
+        group_id,
+        subjects!inner (
+          name
+        ),
+        teachers!inner (
+          name,
+          surname
         )
-      ''')
-            .eq('schedule.group_id', groupId) // фильтр по группе
-            .eq('schedule.date', today) // фильтр по дате
-            .lte('schedule.start_time', currentTime) // start_time <= now
-            .gt('schedule.end_time', currentTime) // now < end_time
+      )
+    ''')
+            .eq('schedule.group_id', groupId)
+            .eq('schedule.date', today)
+            .lte('schedule.start_time', currentTime)
+            .gt('schedule.end_time', currentTime)
             .maybeSingle();
 
     print("получаю данные о текущем уроке");

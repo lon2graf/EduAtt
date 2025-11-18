@@ -16,13 +16,12 @@ class StudentHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
-  int _selectedIndex = 0; // Индекс текущей вкладки
+  int _selectedIndex = 0;
 
-  // Список экранов для каждой вкладки
   final List<Widget> _widgetOptions = <Widget>[
-    const HomeContentScreen(), // Индекс 0: Статистика и текущее занятие
-    const MissesContentScreen(), // Индекс 1: Мои пропуски
-    const ProfileContentScreen(), // Индекс 2: Профиль
+    const HomeContentScreen(),
+    const MissesContentScreen(),
+    const ProfileContentScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -34,13 +33,15 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Основной body отображает текущую вкладку
-      body: _widgetOptions.elementAt(_selectedIndex),
-      // Добавляем нижнюю панель навигации
+      // УБРАЛИ градиент из Scaffold
+      // backgroundColor: Colors.transparent,
+      body: _widgetOptions.elementAt(
+        _selectedIndex,
+      ), // Теперь каждый экран сам заботится о фоне
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        indicatorColor: Colors.white.withOpacity(0.4), // Цвет активной вкладки
+        indicatorColor: Colors.white.withOpacity(0.4),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -58,7 +59,6 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             label: 'Профиль',
           ),
         ],
-        // Стиль для Material 3
         surfaceTintColor: Colors.transparent,
       ),
     );
