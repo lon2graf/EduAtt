@@ -26,4 +26,33 @@ class StudentServices {
       return null;
     }
   }
+
+  static Future<List<StudentModel>> GetStudentsByGroupId(String groupId) async {
+    final supClient = Supabase.instance.client;
+
+    try {
+      final response = await supClient
+          .from('students')
+          .select('''
+        id,
+        name,
+        surname,
+        group_id,
+        isHeadman
+      ''') // Выбираем все нужные поля
+          .eq('group_id', groupId); // Фильтруем по group_id
+
+      print("Запрашиваю студентов из группы: $groupId");
+      print(response);
+
+      if (response == null) return [];
+
+      return (response as List)
+          .map((item) => StudentModel.fromJson(item))
+          .toList();
+    } catch (e) {
+      print('Ошибка при получении студентов по группе: $e');
+      return [];
+    }
+  }
 }

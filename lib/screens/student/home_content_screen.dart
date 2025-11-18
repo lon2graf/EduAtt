@@ -1,3 +1,4 @@
+import 'package:edu_att/services/lesson_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
@@ -6,6 +7,7 @@ import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/student_model.dart';
+import 'package:edu_att/providers/group_provider.dart';
 
 class HomeContentScreen extends ConsumerWidget {
   const HomeContentScreen({super.key}); // Добавим ключ
@@ -101,7 +103,7 @@ class HomeContentScreen extends ConsumerWidget {
                   // 🔹 Текущее занятие
                   _buildSectionTitle('Текущее занятие'),
                   const SizedBox(height: 12),
-                  _buildCurrentLessonCard(student), // Передаем student
+                  _buildCurrentLessonCard(student, ref), // Передаем student
                 ],
               ),
             ),
@@ -112,7 +114,7 @@ class HomeContentScreen extends ConsumerWidget {
   }
 
   // Новый виджет для карточки текущего занятия (теперь с логикой для старосты)
-  Widget _buildCurrentLessonCard(StudentModel? student) {
+  Widget _buildCurrentLessonCard(StudentModel? student, WidgetRef ref) {
     // Принимает StudentModel?
     // Здесь можно добавить логику для определения текущего занятия
     // Пока что заглушка
@@ -184,10 +186,20 @@ class HomeContentScreen extends ConsumerWidget {
               // Выравнивание кнопки
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Навигация на экран отметки посещаемости
-                  // context.go('/attendance-marking'); // или другой маршрут
-                  print('Нажата кнопка "Отметить посещаемость"');
+                onPressed: () async {
+                  if (student != null) {
+                    ref
+                        .read(groupStudentsProvider.notifier)
+                        .loadGroupStudents(
+                          student.groupId,
+                        ); // Теперь student не null, можно использовать !.
+                    await LessonService.getCurrentLesson(student.groupId);
+                    print('Нажата кнопка "Отметить посещаемость"');
+                  } else {
+                    print(
+                      'Ошибка: студент не определен при нажатии кнопки "Отметить"',
+                    );
+                  }
                 },
                 icon: const Icon(
                   Icons.check_circle_outline_rounded,

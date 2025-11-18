@@ -113,9 +113,9 @@ class ProfileContentScreen extends ConsumerWidget {
             // Убрали карточку с группой
             // _buildInfoCard('Группа', student.groupId),
             // const SizedBox(height: 16),
-            _buildInfoCard('Email', student.email),
+            _buildInfoCard('Email', student.email ?? 'Не указан'),
             const SizedBox(height: 16),
-            _buildInfoCard('Логин', student.login),
+            _buildInfoCard('Логин', student.login ?? 'Не указан'),
             const SizedBox(height: 16),
             _buildInfoCard('Староста', student.isHeadman ? 'Да' : 'Нет'),
             // Добавьте другие поля модели StudentModel, если нужно
