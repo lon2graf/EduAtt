@@ -12,6 +12,11 @@ class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
     final lesson = await LessonService.getCurrentLesson(groupId);
     state = lesson;
   }
+
+  Future<void> loadCurrentLessonForTeacher(String teacherId) async {
+    final lesson = await LessonService.getCurrentLessonForTeacher(teacherId);
+    state = lesson;
+  }
 }
 
 // Провайдер для использования в UI

@@ -1,4 +1,5 @@
 import 'package:edu_att/screens/student/lesson_attendance_mark_screen.dart';
+import 'package:edu_att/screens/teacher/login_teacher_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -7,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:edu_att/screens/menu_screen.dart';
 import 'package:edu_att/screens/student/login_student_screen.dart';
 import 'package:edu_att/screens/student/home_screen.dart';
+import 'package:edu_att/screens/teacher/home_screen.dart';
+import 'package:edu_att/screens/teacher/teacher_attendance_mark_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,16 +28,29 @@ void main() async {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const MainMenuScreen()),
       GoRoute(
-        path: '/login',
+        path: '/login_student',
         builder: (context, state) => const StudentLoginScreen(),
       ),
+      GoRoute(
+        path: '/login_teacher',
+        builder: (context, state) => const TeacherLoginScreen(),
+      ),
+
       GoRoute(
         path: '/student/home',
         builder: (context, state) => const StudentHomeScreen(),
       ),
       GoRoute(
+        path: '/teacher/home',
+        builder: (context, state) => const TeacherHomeScreen(),
+      ),
+      GoRoute(
         path: '/student/mark',
         builder: (context, state) => const AttendanceMarkScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/mark',
+        builder: (context, state) => const TeacherAttendanceMarkScreen(),
       ),
     ],
   );

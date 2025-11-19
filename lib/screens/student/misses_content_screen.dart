@@ -222,14 +222,14 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     IconData statusIcon;
 
     switch (record.status?.toLowerCase()) {
-      case 'present':
+      case 'присутствует':
         statusColor = Colors.green;
-        statusText = 'Присутствовал';
+        statusText = 'Присутствует';
         statusIcon = Icons.check_circle_rounded;
         break;
-      case 'absent':
+      case 'отсутствует':
         statusColor = Colors.red;
-        statusText = 'Отсутствовал';
+        statusText = 'Отсутствует';
         statusIcon = Icons.event_busy_rounded;
         break;
       default:

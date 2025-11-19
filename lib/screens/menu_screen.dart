@@ -53,7 +53,7 @@ class MainMenuScreen extends StatelessWidget {
                   icon: Icons.school_rounded,
                   title: 'Вход студента',
                   onPressed: () {
-                    context.go('/login');
+                    context.go('/login_student');
                   },
                 ),
                 const SizedBox(height: 20), // Уменьшено с 32 → 20
@@ -63,6 +63,7 @@ class MainMenuScreen extends StatelessWidget {
                   icon: Icons.person_rounded,
                   title: 'Вход преподавателя',
                   onPressed: () {
+                    context.go('/login_teacher');
                     // context.go('/login/teacher');
                   },
                 ),

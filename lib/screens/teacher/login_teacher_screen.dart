@@ -1,18 +1,15 @@
-import 'package:edu_att/models/lesson_attendance_model.dart';
-import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:edu_att/providers/student_provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:edu_att/providers/lesson_attendance_provider.dart';
+import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 
-class StudentLoginScreen extends ConsumerWidget {
-  const StudentLoginScreen({super.key});
+class TeacherLoginScreen extends ConsumerWidget {
+  const TeacherLoginScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emailController = TextEditingController();
+    final loginController = TextEditingController();
     final passwordController = TextEditingController();
     final institutionController = TextEditingController();
 
@@ -21,68 +18,71 @@ class StudentLoginScreen extends ConsumerWidget {
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF4A148C), // Глубокий фиолетовый
-              Color(0xFF6A1B9A), // Темно-фиолетовый
-              Color(0xFF7B1FA2), // Ярче посередине
-            ],
+            colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-          ), // Вуаль
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20), // Уменьшены отступы
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Вход студента',
+                      'Вход преподавателя',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 34, // Уменьшен шрифт заголовка
+                        fontSize: 34,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.0, // Уменьшена ширина
+                        letterSpacing: 1.0,
                         shadows: [
                           Shadow(
                             color: Colors.black.withOpacity(0.2),
                             blurRadius: 4,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 40), // Уменьшен отступ
+                    const SizedBox(height: 40),
+
+                    // institution id
                     _buildTextField(
                       controller: institutionController,
                       hintText: 'ID образовательной организации',
                     ),
-                    const SizedBox(height: 18), // Уменьшен отступ
+                    const SizedBox(height: 18),
+
+                    // login
                     _buildTextField(
-                      controller: emailController,
-                      hintText: 'Email',
+                      controller: loginController,
+                      hintText: 'Логин',
                     ),
-                    const SizedBox(height: 18), // Уменьшен отступ
+                    const SizedBox(height: 18),
+
+                    // password
                     _buildTextField(
                       controller: passwordController,
                       hintText: 'Пароль',
                       obscureText: true,
                     ),
-                    const SizedBox(height: 36), // Уменьшен отступ
+                    const SizedBox(height: 36),
+
+                    // login button
                     _buildLoginButton(
                       context,
                       ref,
                       institutionController,
-                      emailController,
+                      loginController,
                       passwordController,
                     ),
-                    const SizedBox(height: 18), // Уменьшен отступ
+                    const SizedBox(height: 18),
+
                     InkWell(
                       onTap: () => context.go('/'),
                       child: const Padding(
@@ -90,11 +90,10 @@ class StudentLoginScreen extends ConsumerWidget {
                         child: Text(
                           'Назад в главное меню',
                           style: TextStyle(
-                            color: Colors.white60, // Светлее
-                            fontSize: 15, // Уменьшен шрифт
+                            color: Colors.white60,
+                            fontSize: 15,
                             decoration: TextDecoration.underline,
-                            decorationColor:
-                                Colors.white30, // Светлее подчёркивание
+                            decorationColor: Colors.white30,
                             decorationThickness: 1.2,
                           ),
                         ),
@@ -118,32 +117,25 @@ class StudentLoginScreen extends ConsumerWidget {
     return TextField(
       controller: controller,
       obscureText: obscureText,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 16, // Уменьшен шрифт
-      ),
+      style: const TextStyle(color: Colors.white, fontSize: 16),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: Colors.white60, // Светлее
-          fontSize: 15, // Уменьшен шрифт
-        ),
+        hintStyle: const TextStyle(color: Colors.white60, fontSize: 15),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.14), // Светлее фон поля
+        fillColor: Colors.white.withOpacity(0.14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14), // Уменьшено скругление
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          // Обводка при фокусе
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.4), // Цвет обводки при фокусе
+            color: Colors.white.withOpacity(0.4),
             width: 1.2,
           ),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          vertical: 16, // Уменьшены внутренние отступы
+          vertical: 16,
           horizontal: 18,
         ),
       ),
@@ -158,54 +150,43 @@ class StudentLoginScreen extends ConsumerWidget {
     TextEditingController passwordController,
   ) {
     return SizedBox(
-      width: 260, // Уменьшена ширина
-      height: 56, // Уменьшена высота
+      width: 260,
+      height: 56,
       child: ElevatedButton(
         onPressed: () async {
-          print('кнопка тыкнут');
-          final success = await ref
-              .read(currentStudentProvider.notifier)
-              .login(
-                institutionController.text.trim(),
-                emailController.text.trim(),
-                passwordController.text.trim(),
-              );
+          final notifier = ref.read(teacherProvider.notifier);
 
-          if (success && context.mounted) {
-            print("кнопка тыкнут и саксесс");
+          await notifier.loginTeacher(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+            institutionId: institutionController.text.trim(),
+          );
 
-            final student = ref.watch(currentStudentProvider);
+          final teacher = ref.read(teacherProvider);
 
-            if (student != null) {
-              await ref
-                  .read(attendanceProvider.notifier)
-                  .loadStudentAttendances(student.id!);
-              await ref
-                  .read(currentLessonProvider.notifier)
-                  .loadCurrentLesson(student.groupId);
-              context.go('/student/home');
-            }
+          if (teacher != null && context.mounted) {
+            await ref
+                .read(currentLessonProvider.notifier)
+                .loadCurrentLessonForTeacher(teacher.id!);
+            context.go('/teacher/home');
           } else {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(const SnackBar(content: Text('Ошибка входа')));
+            ).showSnackBar(const SnackBar(content: Text("Ошибка входа")));
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.purple.shade700, // Фиолетовый стиль
+          backgroundColor: Colors.purple.shade700,
           foregroundColor: Colors.white,
-          elevation: 6, // Уменьшена тень
+          elevation: 6,
           shadowColor: Colors.black.withOpacity(0.15),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16), // Уменьшено скругление
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: const Text(
           'Войти',
-          style: TextStyle(
-            fontSize: 17, // Уменьшен шрифт
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
     );
