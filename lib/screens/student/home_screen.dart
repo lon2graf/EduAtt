@@ -33,11 +33,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // УБРАЛИ градиент из Scaffold
-      // backgroundColor: Colors.transparent,
-      body: _widgetOptions.elementAt(
-        _selectedIndex,
-      ), // Теперь каждый экран сам заботится о фоне
+      body: _widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,

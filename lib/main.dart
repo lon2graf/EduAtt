@@ -10,6 +10,9 @@ import 'package:edu_att/screens/student/login_student_screen.dart';
 import 'package:edu_att/screens/student/home_screen.dart';
 import 'package:edu_att/screens/teacher/home_screen.dart';
 import 'package:edu_att/screens/teacher/teacher_attendance_mark_screen.dart';
+import 'package:edu_att/services/shared_preferences_service.dart';
+import 'package:edu_att/providers/student_provider.dart';
+import 'package:edu_att/providers/teacher_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +38,6 @@ void main() async {
         path: '/login_teacher',
         builder: (context, state) => const TeacherLoginScreen(),
       ),
-
       GoRoute(
         path: '/student/home',
         builder: (context, state) => const StudentHomeScreen(),
@@ -58,13 +60,116 @@ void main() async {
   runApp(ProviderScope(child: EduAttApp(router: appRouter)));
 }
 
-class EduAttApp extends StatelessWidget {
+class EduAttApp extends ConsumerStatefulWidget {
   final GoRouter router;
 
   const EduAttApp({super.key, required this.router});
 
   @override
+  ConsumerState<EduAttApp> createState() => _EduAttAppState();
+}
+
+class _EduAttAppState extends ConsumerState<EduAttApp> {
+  bool _isCheckingSession = true;
+  bool _shouldRedirectToHome = false; // ← новый флаг
+  String _userType = ''; // ← тип пользователя для редиректа
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndAutoLogin();
+  }
+
+  Future<void> _checkAndAutoLogin() async {
+    final userType = await SharedPreferencesService.getUserType();
+    bool loginSuccess = false;
+
+    if (userType == 'student') {
+      loginSuccess = await _tryAutoLoginStudent();
+    } else if (userType == 'teacher') {
+      loginSuccess = await _tryAutoLoginTeacher();
+    }
+
+    setState(() {
+      _isCheckingSession = false;
+      _shouldRedirectToHome = loginSuccess;
+      _userType = userType ?? '';
+    });
+  }
+
+  Future<bool> _tryAutoLoginStudent() async {
+    final credentials = await SharedPreferencesService.getStudentCredentials();
+    if (credentials != null) {
+      final success = await ref
+          .read(currentStudentProvider.notifier)
+          .login(
+            credentials['institutionId']!,
+            credentials['login']!,
+            credentials['password']!,
+          );
+      return success;
+    }
+    return false;
+  }
+
+  Future<bool> _tryAutoLoginTeacher() async {
+    final credentials = await SharedPreferencesService.getTeacherCredentials();
+    if (credentials != null) {
+      await ref
+          .read(teacherProvider.notifier)
+          .loginTeacher(
+            email: credentials['login']!,
+            password: credentials['password']!,
+            institutionId: credentials['institutionId']!,
+          );
+
+      // Проверяем успешность входа
+      final teacher = ref.read(teacherProvider);
+      return teacher != null;
+    }
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Если нужно сделать редирект - делаем его
+    if (_shouldRedirectToHome) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_userType == 'student') {
+          widget.router.go('/student/home');
+        } else if (_userType == 'teacher') {
+          widget.router.go('/teacher/home');
+        }
+        // Сбрасываем флаг после редиректа
+        setState(() {
+          _shouldRedirectToHome = false;
+        });
+      });
+    }
+
+    // Пока проверяем сессию, показываем загрузку
+    if (_isCheckingSession) {
+      return MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.deepPurple,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 20),
+                Text(
+                  'Проверка сессии...',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // После проверки показываем основное приложение
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'EduAtt',
@@ -72,7 +177,7 @@ class EduAttApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      routerConfig: router,
+      routerConfig: widget.router,
     );
   }
 }

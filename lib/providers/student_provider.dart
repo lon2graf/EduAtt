@@ -1,7 +1,7 @@
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/services/student_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:edu_att/services/shared_preferences_service.dart';
 
 final currentStudentProvider =
     StateNotifierProvider<StudentNotifier, StudentModel?>(
@@ -24,6 +24,11 @@ class StudentNotifier extends StateNotifier<StudentModel?> {
       );
       if (student != null) {
         state = student;
+        await SharedPreferencesService.saveStudentCredentials(
+          login: email,
+          password: password,
+          institutionId: institutionId,
+        );
         return true;
       }
       return false;
@@ -33,8 +38,9 @@ class StudentNotifier extends StateNotifier<StudentModel?> {
     }
   }
 
-  void logout() {
+  void logout() async {
     state = null;
+    await SharedPreferencesService.clearAllData();
   }
 
   bool get isLoggined => state != null;

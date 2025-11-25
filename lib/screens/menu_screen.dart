@@ -67,7 +67,6 @@ class MainMenuScreen extends StatelessWidget {
                     // context.go('/login/teacher');
                   },
                 ),
-                // Ссылка "Продолжить без организации" — удалена
               ],
             ),
           ),
@@ -82,42 +81,37 @@ class MainMenuScreen extends StatelessWidget {
     required String title,
     required VoidCallback onPressed,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Не фиксировано — адаптируем под экран, но не слишком растягиваем
+    final maxWidth = screenWidth > 360 ? 280.0 : screenWidth * 0.85;
+
     return SizedBox(
-      width: 260, // Уменьшено с 300 → 260
-      height: 60, // Уменьшено с 72 → 60
+      width: maxWidth,
+      height: 60,
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(
-          icon,
-          size: 26, // Уменьшено с 32 → 26
-          color: Colors.white,
-        ),
+        icon: Icon(icon, size: 24, color: Colors.white),
         label: Text(
           title,
-          style: TextStyle(
-            fontSize: 18, // Уменьшено с 20 → 18
+          maxLines: 1,
+          overflow: TextOverflow.fade,
+          softWrap: false,
+          style: const TextStyle(
+            fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white.withOpacity(
-            0.12,
-          ), // Уменьшена прозрачность фона
+          backgroundColor: Colors.white.withOpacity(0.12),
           foregroundColor: Colors.white,
-          elevation: 6, // Уменьшена тень
-          shadowColor: Colors.black.withOpacity(0.12), // Уменьшена тень
+          elevation: 6,
+          shadowColor: Colors.black.withOpacity(0.12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16), // Уменьшено скругление
+            borderRadius: BorderRadius.circular(16),
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 12,
-          ), // Уменьшены отступы
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.15), // Тонкая обводка
-            width: 0.8, // Уже
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          side: BorderSide(color: Colors.white.withOpacity(0.15), width: 0.8),
         ),
       ),
     );
