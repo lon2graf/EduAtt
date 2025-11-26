@@ -13,6 +13,7 @@ import 'package:edu_att/screens/teacher/teacher_attendance_mark_screen.dart';
 import 'package:edu_att/services/shared_preferences_service.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
+import 'package:edu_att/screens/student/subject_absences_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,13 @@ void main() async {
       GoRoute(
         path: '/teacher/mark',
         builder: (context, state) => const TeacherAttendanceMarkScreen(),
+      ),
+      GoRoute(
+        path: '/student/subject_absences',
+        builder: (context, state) {
+          final subjectName = state.uri.queryParameters['subject'] ?? 'Предмет';
+          return SubjectAbsencesScreen(subjectName: subjectName);
+        },
       ),
     ],
   );

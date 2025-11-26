@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/models/student_model.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileContentScreen extends ConsumerWidget {
   const ProfileContentScreen({super.key});
@@ -41,7 +42,7 @@ class ProfileContentScreen extends ConsumerWidget {
                   // --- Информация о студенте ---
                   Expanded(child: _buildProfileInfo(student)),
                   // --- Кнопка выхода ---
-                  _buildLogoutButton(ref),
+                  _buildLogoutButton(ref, context),
                   const SizedBox(height: 14), // Уменьшен отступ
                 ],
               ),
@@ -171,7 +172,7 @@ class ProfileContentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLogoutButton(WidgetRef ref) {
+  Widget _buildLogoutButton(WidgetRef ref, BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: 16.0,
@@ -182,6 +183,7 @@ class ProfileContentScreen extends ConsumerWidget {
         child: ElevatedButton(
           onPressed: () {
             ref.read(currentStudentProvider.notifier).logout();
+            context.go('/');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red.shade700, // Фиолетовый стиль для кнопки

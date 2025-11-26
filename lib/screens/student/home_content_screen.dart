@@ -21,17 +21,10 @@ class HomeContentScreen extends ConsumerWidget {
     );
 
     final DateTime now = DateTime.now();
-    final double attendancePercentage =
-        LessonsAttendanceService.calculateAttendancePercentageForMonth(
-          allAttendances,
-          now,
-        );
     final int absencesCount = LessonsAttendanceService.countAbsencesForMonth(
       allAttendances,
       now,
     );
-
-    String formattedPercentage = attendancePercentage.toStringAsFixed(1);
 
     // Теперь используем LayoutBuilder, чтобы растянуть градиент на всё пространство
     return LayoutBuilder(
@@ -102,15 +95,28 @@ class HomeContentScreen extends ConsumerWidget {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            _StatItem(
-                              label: 'Пропущено:',
-                              value: '${absencesCount.toString()}',
-                            ),
-                            const SizedBox(height: 4),
-                            _StatItem(
-                              label: 'Посещаемость:',
-                              value: '$formattedPercentage%',
+                            const SizedBox(height: 12),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Text(
+                                    absencesCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _getAbsencesText(absencesCount),
+                                    style: const TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -132,6 +138,13 @@ class HomeContentScreen extends ConsumerWidget {
     );
   }
 
+  String _getAbsencesText(int count) {
+    if (count == 0) return 'пропусков';
+    if (count == 1) return 'пропуск';
+    if (count >= 2 && count <= 4) return 'пропуска';
+    return 'пропусков';
+  }
+
   Widget _buildCurrentLessonCard(
     StudentModel? student,
     WidgetRef ref,
@@ -143,7 +156,7 @@ class HomeContentScreen extends ConsumerWidget {
       return _buildCard(
         child: const Center(
           child: Text(
-            'Сегодня занятий нет',
+            'Сейчас занятий нет',
             style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
         ),
@@ -162,46 +175,22 @@ class HomeContentScreen extends ConsumerWidget {
       teacherFullName = 'Не указан';
     }
 
-    const String status = 'Присутствует';
-    Color statusColor = status == 'Присутствует' ? Colors.green : Colors.red;
-
     bool showMarkButton = student?.isHeadman == true;
 
     return _buildCard(
-      height: showMarkButton ? 180 : 140,
+      height: showMarkButton ? 160 : 120,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  lesson.subjectName ?? 'Предмет',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
+          // Заголовок с названием предмета
+          Text(
+            lesson.subjectName ?? 'Предмет',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -214,7 +203,7 @@ class HomeContentScreen extends ConsumerWidget {
             style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
           if (showMarkButton) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
@@ -314,7 +303,6 @@ class _StatItem extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            // Убран const
             color: Colors.white60,
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -323,7 +311,6 @@ class _StatItem extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            // Убран const
             color: Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w600,

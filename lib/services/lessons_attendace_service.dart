@@ -110,7 +110,7 @@ class LessonsAttendanceService {
     final int presentCount =
         monthlyAttendances
             .where(
-              (attendance) => attendance.status?.toLowerCase() == 'present',
+              (attendance) => attendance.status?.toLowerCase() == 'присутсвует',
             )
             .length;
 
@@ -129,7 +129,7 @@ class LessonsAttendanceService {
     return allAttendances
         .where(
           (attendance) =>
-              attendance.status?.toLowerCase() == 'absent' &&
+              attendance.status?.toLowerCase() == 'отсутствует' &&
               attendance.lessonDate != null &&
               attendance.lessonDate!.year == monthDate.year &&
               attendance.lessonDate!.month == monthDate.month,

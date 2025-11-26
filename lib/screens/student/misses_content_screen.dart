@@ -269,12 +269,27 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  record.subjectName ?? 'Предмет не указан',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                child: InkWell(
+                  onTap: () {
+                    // Переход на экран детализации только для предметов с пропусками
+                    if (record.subjectName != null) {
+                      context.push(
+                        '/student/subject_absences?subject=${Uri.encodeComponent(record.subjectName!)}',
+                      );
+                    }
+                  },
+                  child: Text(
+                    record.subjectName ?? 'Предмет не указан',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      decoration:
+                          record.subjectName != null
+                              ? TextDecoration.underline
+                              : TextDecoration.none,
+                      decorationColor: Colors.white.withOpacity(0.6),
+                    ),
                   ),
                 ),
               ),
