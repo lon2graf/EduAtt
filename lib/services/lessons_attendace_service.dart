@@ -136,4 +136,22 @@ class LessonsAttendanceService {
         )
         .length;
   }
+
+  // Проверяет, есть ли записи посещаемости для конкретного урока
+  static Future<bool> isLessonMarked(int lessonId) async {
+    final supClient = Supabase.instance.client;
+    try {
+      final response = await supClient
+          .from('lesson_attendances')
+          .select('id') // Нам нужен только факт существования ID
+          .eq('lesson_id', lessonId)
+          .limit(1); // Достаточно найти хотя бы одну запись
+
+      // Если список не пуст, значит урок уже отмечен
+      return (response as List).isNotEmpty;
+    } catch (e) {
+      print('Ошибка при проверке статуса урока: $e');
+      return false;
+    }
+  }
 }

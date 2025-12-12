@@ -89,7 +89,6 @@ class TeacherHomeContentScreen extends ConsumerWidget {
         ),
       );
     }
-
     String formattedStartTime = _formatTime(lesson.startTime);
     String formattedEndTime = _formatTime(lesson.endTime);
     String teacherFullName =
@@ -121,30 +120,72 @@ class TeacherHomeContentScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                // Загружаем студентов группы преподавателя
-                if (lesson.groupId != null) {
-                  await ref
-                      .read(groupStudentsProvider.notifier)
-                      .loadGroupStudents(lesson.groupId!);
-                  context.go('/teacher/mark'); // Переход к отметке
+
+            child: FutureBuilder<bool>(
+              // Проверяем в базе, есть ли записи посещаемости по этому ID урока
+              future: LessonsAttendanceService.isLessonMarked(lesson.id ?? 0),
+              builder: (context, snapshot) {
+                // Пока грузится - показываем крутилку
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  );
                 }
+
+                // Если true - значит урок уже отмечен
+                final bool isMarked = snapshot.data ?? false;
+
+                return ElevatedButton.icon(
+                  onPressed:
+                      isMarked
+                          ? null // Блокируем нажатие, если уже отмечено
+                          : () async {
+                            // Логика перехода к отметке
+                            if (lesson.groupId != null) {
+                              await ref
+                                  .read(groupStudentsProvider.notifier)
+                                  .loadGroupStudents(lesson.groupId!);
+
+                              if (context.mounted) {
+                                context.go('/teacher/mark');
+                              }
+                            }
+                          },
+                  // Меняем иконку: галочка (если отмечено) или контур галочки (если нет)
+                  icon: Icon(
+                    isMarked
+                        ? Icons.check_circle
+                        : Icons.check_circle_outline_rounded,
+                    size: 16,
+                  ),
+                  // Меняем текст
+                  label: Text(
+                    isMarked ? 'Уже отмечено' : 'Отметить',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    // Меняем цвет: прозрачный серый (если отмечено) или фиолетовый (если нет)
+                    backgroundColor:
+                        isMarked
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.purple.shade700,
+                    foregroundColor: isMarked ? Colors.white60 : Colors.white,
+                    elevation: isMarked ? 0 : 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                  ),
+                );
               },
-              icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-              label: const Text('Отметить', style: TextStyle(fontSize: 14)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade700,
-                foregroundColor: Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-              ),
             ),
           ),
         ],

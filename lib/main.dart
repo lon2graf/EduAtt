@@ -79,8 +79,8 @@ class EduAttApp extends ConsumerStatefulWidget {
 
 class _EduAttAppState extends ConsumerState<EduAttApp> {
   bool _isCheckingSession = true;
-  bool _shouldRedirectToHome = false; // ← новый флаг
-  String _userType = ''; // ← тип пользователя для редиректа
+  bool _shouldRedirectToHome = false;
+  String _userType = '';
 
   @override
   void initState() {

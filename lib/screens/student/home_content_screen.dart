@@ -152,6 +152,9 @@ class HomeContentScreen extends ConsumerWidget {
   ) {
     final lesson = ref.watch(currentLessonProvider);
 
+    // !!! 1. Получаем список всех посещений студента (старосты)
+    final allAttendances = ref.watch(attendanceProvider);
+
     if (lesson == null) {
       return _buildCard(
         child: const Center(
@@ -163,18 +166,22 @@ class HomeContentScreen extends ConsumerWidget {
       );
     }
 
-    // Форматируем время: убираем секунды
+    // !!! 2. Проверяем, есть ли уже отметка для ЭТОГО урока
+    // (ищем в списке посещений запись с таким же lessonId)
+    final bool isAlreadyMarked = allAttendances.any(
+      (attendance) => attendance.lessonId == lesson.id,
+    );
+
     String formattedStartTime = _formatTime(lesson.startTime);
     String formattedEndTime = _formatTime(lesson.endTime);
 
-    // Собираем имя и фамилию преподавателя
     String teacherFullName =
         '${lesson.teacherName ?? ''} ${lesson.teacherSurname ?? ''}'.trim();
-
     if (teacherFullName.isEmpty) {
       teacherFullName = 'Не указан';
     }
 
+    // Кнопку показываем только старосте
     bool showMarkButton = student?.isHeadman == true;
 
     return _buildCard(
@@ -183,7 +190,6 @@ class HomeContentScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Заголовок с названием предмета
           Text(
             lesson.subjectName ?? 'Предмет',
             style: const TextStyle(
@@ -202,26 +208,46 @@ class HomeContentScreen extends ConsumerWidget {
             'Преподаватель: $teacherFullName',
             style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
+
           if (showMarkButton) ...[
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
-                onPressed: () async {
-                  if (student != null) {
-                    ref
-                        .read(groupStudentsProvider.notifier)
-                        .loadGroupStudents(student.groupId);
-                    context.go('/student/mark');
-                    print('Нажата кнопка "Отметить посещаемость"');
-                  }
-                },
-                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                label: const Text('Отметить', style: TextStyle(fontSize: 14)),
+                // !!! 3. Блокируем кнопку, если уже отмечено
+                onPressed:
+                    isAlreadyMarked
+                        ? null // Если null, кнопка станет серой и неактивной
+                        : () async {
+                          if (student != null) {
+                            ref
+                                .read(groupStudentsProvider.notifier)
+                                .loadGroupStudents(student.groupId);
+                            context.go('/student/mark');
+                          }
+                        },
+                // !!! 4. Меняем иконку в зависимости от статуса
+                icon: Icon(
+                  isAlreadyMarked
+                      ? Icons
+                          .check_circle // Галочка, если уже отмечено
+                      : Icons.edit_square, // Карандаш, если нужно отметить
+                  size: 16,
+                ),
+                // !!! 5. Меняем текст кнопки
+                label: Text(
+                  isAlreadyMarked ? 'Уже отмечено' : 'Отметить',
+                  style: const TextStyle(fontSize: 14),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple.shade700,
-                  foregroundColor: Colors.white,
-                  elevation: 4,
+                  // !!! 6. Меняем цвет: серый если отмечено, фиолетовый если нет
+                  backgroundColor:
+                      isAlreadyMarked
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.purple.shade700,
+                  foregroundColor:
+                      isAlreadyMarked ? Colors.white60 : Colors.white,
+                  elevation: isAlreadyMarked ? 0 : 4,
                   shadowColor: Colors.black.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
