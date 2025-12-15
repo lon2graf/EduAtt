@@ -1,3 +1,4 @@
+import 'package:edu_att/screens/lesson_chat_screen.dart';
 import 'package:edu_att/screens/student/lesson_attendance_mark_screen.dart';
 import 'package:edu_att/screens/teacher/login_teacher_screen.dart';
 import 'package:flutter/material.dart';
@@ -61,6 +62,10 @@ void main() async {
           final subjectName = state.uri.queryParameters['subject'] ?? 'Предмет';
           return SubjectAbsencesScreen(subjectName: subjectName);
         },
+      ),
+      GoRoute(
+        path: '/lesson_chat',
+        builder: (context, state) => const LessonChatScreen(),
       ),
     ],
   );

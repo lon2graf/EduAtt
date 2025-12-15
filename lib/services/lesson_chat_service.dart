@@ -71,7 +71,7 @@ class LessonChatService {
       students(name, surname)  
     ''')
           .eq('lesson_id', lessonId)
-          .order('timestamp');
+          .order('timestamp', ascending: true);
       return (response as List)
           .map((json) => ChatMessage.fromJson(json))
           .toList();

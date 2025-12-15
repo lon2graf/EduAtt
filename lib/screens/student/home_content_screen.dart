@@ -185,7 +185,10 @@ class HomeContentScreen extends ConsumerWidget {
     bool showMarkButton = student?.isHeadman == true;
 
     return _buildCard(
-      height: showMarkButton ? 160 : 120,
+      height:
+          showMarkButton
+              ? 200
+              : 160, // ↑ чуть выше, чтобы поместилась кнопка чата
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -208,16 +211,41 @@ class HomeContentScreen extends ConsumerWidget {
             'Преподаватель: $teacherFullName',
             style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
+          const SizedBox(height: 12),
+
+          // 🔹 Кнопка "Чат урока" — для ВСЕХ студентов
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.go('/lesson_chat');
+              },
+              icon: const Icon(Icons.chat_bubble_outline, size: 16),
+              label: const Text('Чат урока', style: TextStyle(fontSize: 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple.shade700,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+              ),
+            ),
+          ),
 
           if (showMarkButton) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
-                // !!! 3. Блокируем кнопку, если уже отмечено
                 onPressed:
                     isAlreadyMarked
-                        ? null // Если null, кнопка станет серой и неактивной
+                        ? null
                         : () async {
                           if (student != null) {
                             ref
@@ -226,21 +254,15 @@ class HomeContentScreen extends ConsumerWidget {
                             context.go('/student/mark');
                           }
                         },
-                // !!! 4. Меняем иконку в зависимости от статуса
                 icon: Icon(
-                  isAlreadyMarked
-                      ? Icons
-                          .check_circle // Галочка, если уже отмечено
-                      : Icons.edit_square, // Карандаш, если нужно отметить
+                  isAlreadyMarked ? Icons.check_circle : Icons.edit_square,
                   size: 16,
                 ),
-                // !!! 5. Меняем текст кнопки
                 label: Text(
                   isAlreadyMarked ? 'Уже отмечено' : 'Отметить',
                   style: const TextStyle(fontSize: 14),
                 ),
                 style: ElevatedButton.styleFrom(
-                  // !!! 6. Меняем цвет: серый если отмечено, фиолетовый если нет
                   backgroundColor:
                       isAlreadyMarked
                           ? Colors.white.withOpacity(0.1)

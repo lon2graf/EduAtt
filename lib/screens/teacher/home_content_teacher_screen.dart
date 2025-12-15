@@ -79,7 +79,7 @@ class TeacherHomeContentScreen extends ConsumerWidget {
     BuildContext context,
     LessonModel? lesson,
   ) {
-    if (lesson == null) {
+    if (lesson == null || lesson.id == null) {
       return _buildCard(
         child: const Center(
           child: Text(
@@ -89,6 +89,7 @@ class TeacherHomeContentScreen extends ConsumerWidget {
         ),
       );
     }
+
     String formattedStartTime = _formatTime(lesson.startTime);
     String formattedEndTime = _formatTime(lesson.endTime);
     String teacherFullName =
@@ -117,76 +118,93 @@ class TeacherHomeContentScreen extends ConsumerWidget {
             'Преподаватель: $teacherFullName',
             style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+
+          // 🔹 Кнопка "Чат урока" — для всех преподавателей
           Align(
             alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.go('/lesson_chat');
+              },
+              icon: const Icon(Icons.chat_bubble_outline, size: 16),
+              label: const Text('Чат урока', style: TextStyle(fontSize: 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple.shade700,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+              ),
+            ),
+          ),
 
-            child: FutureBuilder<bool>(
-              // Проверяем в базе, есть ли записи посещаемости по этому ID урока
-              future: LessonsAttendanceService.isLessonMarked(lesson.id ?? 0),
-              builder: (context, snapshot) {
-                // Пока грузится - показываем крутилку
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  );
-                }
+          const SizedBox(height: 10),
 
-                // Если true - значит урок уже отмечен
-                final bool isMarked = snapshot.data ?? false;
-
-                return ElevatedButton.icon(
-                  onPressed:
-                      isMarked
-                          ? null // Блокируем нажатие, если уже отмечено
-                          : () async {
-                            // Логика перехода к отметке
-                            if (lesson.groupId != null) {
-                              await ref
-                                  .read(groupStudentsProvider.notifier)
-                                  .loadGroupStudents(lesson.groupId!);
-
-                              if (context.mounted) {
-                                context.go('/teacher/mark');
-                              }
-                            }
-                          },
-                  // Меняем иконку: галочка (если отмечено) или контур галочки (если нет)
-                  icon: Icon(
-                    isMarked
-                        ? Icons.check_circle
-                        : Icons.check_circle_outline_rounded,
-                    size: 16,
-                  ),
-                  // Меняем текст
-                  label: Text(
-                    isMarked ? 'Уже отмечено' : 'Отметить',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    // Меняем цвет: прозрачный серый (если отмечено) или фиолетовый (если нет)
-                    backgroundColor:
-                        isMarked
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.purple.shade700,
-                    foregroundColor: isMarked ? Colors.white60 : Colors.white,
-                    elevation: isMarked ? 0 : 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+          // 🔸 Кнопка "Отметить" (с логикой проверки)
+          FutureBuilder<bool>(
+            future: LessonsAttendanceService.isLessonMarked(lesson.id!),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
                   ),
                 );
-              },
-            ),
+              }
+
+              final bool isMarked = snapshot.data ?? false;
+
+              return ElevatedButton.icon(
+                onPressed:
+                    isMarked
+                        ? null
+                        : () async {
+                          if (lesson.groupId.isNotEmpty) {
+                            await ref
+                                .read(groupStudentsProvider.notifier)
+                                .loadGroupStudents(lesson.groupId);
+                            if (context.mounted) {
+                              context.go('/teacher/mark');
+                            }
+                          }
+                        },
+                icon: Icon(
+                  isMarked
+                      ? Icons.check_circle
+                      : Icons.check_circle_outline_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  isMarked ? 'Уже отмечено' : 'Отметить',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isMarked
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.purple.shade700,
+                  foregroundColor: isMarked ? Colors.white60 : Colors.white,
+                  elevation: isMarked ? 0 : 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

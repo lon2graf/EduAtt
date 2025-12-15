@@ -10,28 +10,31 @@ class ChatLongpollingService {
   void startForLesson({
     required int lessonId,
     required DateTime lastMessageDateTime,
-    required,
     required void Function(List<ChatMessage>) onNewMessage,
     Duration interval = const Duration(seconds: 5),
   }) async {
     stop();
 
-    if (_lastMessageTime == null) return;
+    _currentLessonId = lessonId;
+    _lastMessageTime = lastMessageDateTime;
 
-    try {
-      final newMessages = await LessonChatService.getNewMessageSince(
-        lessonId: lessonId,
-        since: lastMessageDateTime,
-      );
+    _timer = Timer.periodic(interval, (timer) async {
+      if (_currentLessonId != lessonId || _lastMessageTime == null) return;
 
-      if (newMessages.isNotEmpty) {
-        onNewMessage(newMessages);
+      try {
+        final newMessages = await LessonChatService.getNewMessageSince(
+          lessonId: lessonId,
+          since: _lastMessageTime!,
+        );
 
-        _lastMessageTime = newMessages.last.timestamp;
+        if (newMessages.isNotEmpty) {
+          onNewMessage(newMessages);
+          _lastMessageTime = newMessages.last.timestamp;
+        }
+      } catch (e) {
+        print('Ошибка polling для урока $lessonId: $e');
       }
-    } catch (e) {
-      print('Ошибка polling для урока $lessonId: $e');
-    }
+    });
   }
 
   void updateLastMessageTime(DateTime newTime) {
