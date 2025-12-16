@@ -13,7 +13,17 @@ class StudentServices {
       final response =
           await supClient
               .from('students')
-              .select()
+              .select('''
+      id,
+      name,
+      surname,
+      email,
+      login,
+      institution_id,
+      group_id,
+      isHeadman,
+      groups (name)
+    ''')
               .eq('email', email)
               .eq('password', password)
               .eq('institution_id', institutionId)

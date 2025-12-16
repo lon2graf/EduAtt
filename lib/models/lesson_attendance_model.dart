@@ -2,7 +2,7 @@ class LessonAttendanceModel {
   final int? id;
   final int lessonId;
   final String studentId;
-  final String? studentName; // новое поле
+  final String? studentName;
   String? status;
 
   final DateTime? lessonDate;
@@ -11,12 +11,13 @@ class LessonAttendanceModel {
   final String? subjectName;
   final String? teacherName;
   final String? teacherSurname;
+  final String? groupId;
 
   LessonAttendanceModel({
     this.id,
     required this.lessonId,
     required this.studentId,
-    this.studentName, // добавили сюда
+    this.studentName,
     this.status,
     this.lessonDate,
     this.lessonStart,
@@ -24,6 +25,7 @@ class LessonAttendanceModel {
     this.subjectName,
     this.teacherName,
     this.teacherSurname,
+    this.groupId,
   });
 
   factory LessonAttendanceModel.fromNestedJson(Map<String, dynamic> json) {
@@ -31,14 +33,17 @@ class LessonAttendanceModel {
     final schedule = lesson["schedule"] as Map<String, dynamic>? ?? {};
     final subject = schedule["subjects"] as Map<String, dynamic>? ?? {};
     final teacher = schedule["teachers"] as Map<String, dynamic>? ?? {};
+    final students = json["students"] as Map<String, dynamic>? ?? {};
+
+    final studentName =
+        '${students["name"] ?? ""} ${students["surname"] ?? ""}'.trim();
 
     return LessonAttendanceModel(
       id: json["id"] as int?,
       lessonId: json["lesson_id"] as int,
       studentId: json["student_id"].toString(),
-      studentName: json["student_name"] as String?, // просто добавили
+      studentName: studentName.isEmpty ? null : studentName,
       status: json["status"] as String?,
-
       lessonDate:
           schedule["date"] != null ? DateTime.tryParse(schedule["date"]) : null,
       lessonStart: schedule["start_time"] as String?,
@@ -46,6 +51,7 @@ class LessonAttendanceModel {
       subjectName: subject["name"] as String?,
       teacherName: teacher["name"] as String?,
       teacherSurname: teacher["surname"] as String?,
+      groupId: schedule["group_id"] as String?, // ← безопасно извлекаем
     );
   }
 

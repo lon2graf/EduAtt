@@ -1,7 +1,9 @@
-import 'package:edu_att/screens/teacher/home_content_teacher_screen.dart';
+// lib/screens/teacher/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:edu_att/screens/teacher/home_content_teacher_screen.dart';
 import 'package:edu_att/screens/teacher/profile_screen.dart';
+import 'package:edu_att/screens/teacher/weekly_report_screen.dart';
 
 class TeacherHomeScreen extends ConsumerStatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -13,9 +15,11 @@ class TeacherHomeScreen extends ConsumerStatefulWidget {
 class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _widgetOptions = <Widget>[
-    const TeacherHomeContentScreen(), // адаптированный экран преподавателя
-    const TeacherProfileContentScreen(),
+  // Порядок: Главная → Ведомость → Профиль
+  final List<Widget> _widgetOptions = const [
+    TeacherHomeContentScreen(),
+    TeacherWeeklyReportScreen(), // ← новый экран
+    TeacherProfileContentScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -37,6 +41,11 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Главная',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.picture_as_pdf_outlined),
+            selectedIcon: Icon(Icons.picture_as_pdf),
+            label: 'Ведомость',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outlined),

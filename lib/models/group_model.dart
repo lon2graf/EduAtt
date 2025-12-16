@@ -1,31 +1,9 @@
-class InstitutionModel {
-  final String? id; // nullable, присваивается Supabase
+// lib/models/group_model.dart
+class GroupModel {
+  final String id;
   final String name;
-  final String? address;
-  final DateTime createdAt;
-
-  InstitutionModel({
-    this.id,
-    required this.name,
-    this.address,
-    required this.createdAt,
-  });
-
-  factory InstitutionModel.fromJson(Map<String, dynamic> json) {
-    return InstitutionModel(
-      id: json['id'] as String?,
-      name: json['name'] as String,
-      address: json['address'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id, // отправляем только если id уже есть
-      'name': name,
-      'address': address,
-      'created_at': createdAt.toIso8601String(),
-    };
+  GroupModel({required this.id, required this.name});
+  factory GroupModel.fromJson(Map<String, dynamic> json) {
+    return GroupModel(id: json['id'] as String, name: json['name'] as String);
   }
 }

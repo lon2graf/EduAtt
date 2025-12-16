@@ -154,4 +154,61 @@ class LessonsAttendanceService {
       return false;
     }
   }
+
+  static Future<List<LessonAttendanceModel>> getWeeklyGroupAttendance({
+    required String groupId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final supClient = Supabase.instance.client;
+    final startStr = _formatDate(startDate);
+    final endStr = _formatDate(endDate);
+    try {
+      final response = await supClient
+          .from('lesson_attendances')
+          .select('''
+          id,
+        lesson_id,
+        student_id,
+        status,
+        students (name, surname),
+        lessons (
+          schedule (
+            date,
+            start_time,
+            end_time,
+            group_id,
+            subject_id,
+            teacher_id,
+            subjects (name),
+            teachers (name, surname)
+            )
+            )
+            
+    ''')
+          .eq('lessons.schedule.group_id', groupId)
+          .gte('lessons.schedule.date', startStr)
+          .lte('lessons.schedule.date', endStr);
+
+      final List<LessonAttendanceModel> attendances =
+          (response as List)
+              .map((json) => LessonAttendanceModel.fromNestedJson(json))
+              .toList();
+
+      attendances.sort((a, b) {
+        return (a.lessonDate ?? DateTime(2000)).compareTo(
+          b.lessonDate ?? DateTime(2000),
+        );
+      });
+
+      return attendances;
+    } catch (e) {
+      print('❗ Ошибка в getWeeklyGroupAttendance: $e');
+      return [];
+    }
+  }
+
+  static String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
 }

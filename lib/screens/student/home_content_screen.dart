@@ -26,19 +26,14 @@ class HomeContentScreen extends ConsumerWidget {
       now,
     );
 
-    // Теперь используем LayoutBuilder, чтобы растянуть градиент на всё пространство
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
           width: double.infinity,
-          height: constraints.maxHeight, // Растягиваем на всю высоту
+          height: constraints.maxHeight,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF4A148C), // Глубокий фиолетовый
-                Color(0xFF6A1B9A), // Темно-фиолетовый
-                Color(0xFF7B1FA2), // Ярче посередине
-              ],
+              colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               stops: [0.0, 0.5, 1.0],
@@ -64,7 +59,6 @@ class HomeContentScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🔹 Приветствие
                       Text(
                         'Привет, ${student?.name ?? 'Студент'}! 😊',
                         style: TextStyle(
@@ -82,7 +76,6 @@ class HomeContentScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 20),
 
-                      // 🔹 Краткая статистика
                       _buildCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +116,6 @@ class HomeContentScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 20),
 
-                      // 🔹 Текущее занятие
                       _buildSectionTitle('Текущее занятие'),
                       const SizedBox(height: 10),
                       _buildCurrentLessonCard(student, ref, context),
@@ -151,8 +143,6 @@ class HomeContentScreen extends ConsumerWidget {
     BuildContext context,
   ) {
     final lesson = ref.watch(currentLessonProvider);
-
-    // !!! 1. Получаем список всех посещений студента (старосты)
     final allAttendances = ref.watch(attendanceProvider);
 
     if (lesson == null) {
@@ -166,8 +156,6 @@ class HomeContentScreen extends ConsumerWidget {
       );
     }
 
-    // !!! 2. Проверяем, есть ли уже отметка для ЭТОГО урока
-    // (ищем в списке посещений запись с таким же lessonId)
     final bool isAlreadyMarked = allAttendances.any(
       (attendance) => attendance.lessonId == lesson.id,
     );
@@ -181,14 +169,10 @@ class HomeContentScreen extends ConsumerWidget {
       teacherFullName = 'Не указан';
     }
 
-    // Кнопку показываем только старосте
     bool showMarkButton = student?.isHeadman == true;
 
     return _buildCard(
-      height:
-          showMarkButton
-              ? 200
-              : 160, // ↑ чуть выше, чтобы поместилась кнопка чата
+      height: showMarkButton ? 220 : 180,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -211,90 +195,99 @@ class HomeContentScreen extends ConsumerWidget {
             'Преподаватель: $teacherFullName',
             style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // 🔹 Кнопка "Чат урока" — для ВСЕХ студентов
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                context.go('/lesson_chat');
-              },
-              icon: const Icon(Icons.chat_bubble_outline, size: 16),
-              label: const Text('Чат урока', style: TextStyle(fontSize: 14)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade700,
-                foregroundColor: Colors.white,
-                elevation: 4,
-                shadowColor: Colors.black.withOpacity(0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+          // === Кнопки по правому краю, без наложения ===
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.go('/lesson_chat');
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                  label: const Text(
+                    'Чат урока',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    shadowColor: Colors.black.withOpacity(0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    maximumSize: const Size(double.infinity, 40),
+                    minimumSize: const Size(double.infinity, 40),
+                  ),
                 ),
               ),
-            ),
+              if (showMarkButton) const SizedBox(height: 8),
+              if (showMarkButton)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        isAlreadyMarked
+                            ? null
+                            : () async {
+                              if (student != null) {
+                                ref
+                                    .read(groupStudentsProvider.notifier)
+                                    .loadGroupStudents(student.groupId);
+                                context.go('/student/mark');
+                              }
+                            },
+                    icon: Icon(
+                      isAlreadyMarked ? Icons.check_circle : Icons.edit_square,
+                      size: 16,
+                    ),
+                    label: Text(
+                      isAlreadyMarked ? 'Уже отмечено' : 'Отметить',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isAlreadyMarked
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.purple.shade700,
+                      foregroundColor:
+                          isAlreadyMarked ? Colors.white60 : Colors.white,
+                      elevation: isAlreadyMarked ? 0 : 4,
+                      shadowColor: Colors.black.withOpacity(0.1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      maximumSize: const Size(double.infinity, 40),
+                      minimumSize: const Size(double.infinity, 40),
+                    ),
+                  ),
+                ),
+            ],
           ),
-
-          if (showMarkButton) ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed:
-                    isAlreadyMarked
-                        ? null
-                        : () async {
-                          if (student != null) {
-                            ref
-                                .read(groupStudentsProvider.notifier)
-                                .loadGroupStudents(student.groupId);
-                            context.go('/student/mark');
-                          }
-                        },
-                icon: Icon(
-                  isAlreadyMarked ? Icons.check_circle : Icons.edit_square,
-                  size: 16,
-                ),
-                label: Text(
-                  isAlreadyMarked ? 'Уже отмечено' : 'Отметить',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isAlreadyMarked
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.purple.shade700,
-                  foregroundColor:
-                      isAlreadyMarked ? Colors.white60 : Colors.white,
-                  elevation: isAlreadyMarked ? 0 : 4,
-                  shadowColor: Colors.black.withOpacity(0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  // Вспомогательный метод для форматирования времени
   String _formatTime(String? timeString) {
     if (timeString == null || timeString.isEmpty) return '--:--';
     List<String> parts = timeString.split(':');
     if (parts.length >= 2) {
-      return '${parts[0]}:${parts[1]}'; // Возвращаем HH:mm
+      return '${parts[0]}:${parts[1]}';
     }
-    return timeString; // Если формат непонятный, возвращаем как есть
+    return timeString;
   }
 
   Widget _buildCard({required Widget child, double? height}) {
@@ -333,38 +326,6 @@ class HomeContentScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatItem({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white60,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }

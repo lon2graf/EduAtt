@@ -42,6 +42,9 @@ dependencies:
   flutter_svg: ^2.2.1
   flutter_riverpod: ^3.0.3
   dropdown_button2: ^2.3.9
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4
@@ -77,6 +80,8 @@ flutter:
   assets:
   - .env
   - assets/icons/applogo.png
+  - assets/fonts/Roboto-Regular.ttf
+  - assets/fonts/Roboto-Bold.ttf
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

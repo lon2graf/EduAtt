@@ -5,7 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cfc2da00-67c4-4214-8409-a8e80565a1b4" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/lib/screens/student/home_content_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/student/home_content_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/lesson_attendance_model.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/lesson_attendance_model.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/student_model.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/student_model.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/services/lessons_attendace_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/lessons_attendace_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/services/student_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/student_service.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
