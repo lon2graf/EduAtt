@@ -1,10 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/models/lesson_model.dart';
-import 'package:edu_att/services/lesson_service.dart';
 import 'package:edu_att/services/lessons_attendace_service.dart';
+import 'package:edu_att/models/attendance_status.dart';
 
 /// StateNotifier для отметки посещаемости студентов
 class LessonAttendanceMarkNotifier
@@ -32,7 +31,7 @@ class LessonAttendanceMarkNotifier
   }
 
   /// Установка статуса посещаемости для конкретного студента
-  void setAttendanceStatus(String studentId, String status) {
+  void setAttendanceStatus(String studentId, AttendanceStatus status) {
     for (final item in state) {
       if (item.studentId == studentId) {
         item.status = status; // просто меняем поле

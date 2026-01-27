@@ -1,3 +1,4 @@
+import 'package:edu_att/models/attendance_status.dart'; // 1. Импорт Enum
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -37,8 +38,10 @@ class _TeacherAttendanceMarkScreenState
     }
 
     final student = students[currentIndex];
+    // Безопасное получение статуса
     final studentAttendance = attendanceList.firstWhere(
       (a) => a.studentId == student.id,
+      orElse: () => attendanceList.first,
     );
 
     return Scaffold(
@@ -65,7 +68,9 @@ class _TeacherAttendanceMarkScreenState
                     children: [
                       _buildStudentCard(student),
                       const SizedBox(height: 24),
-                      _buildCurrentStatus(studentAttendance),
+                      _buildCurrentStatus(
+                        studentAttendance,
+                      ), // Передаем модель целиком
                       const SizedBox(height: 36),
                       _buildActionButtons(student.id!),
                       const SizedBox(height: 36),
@@ -90,7 +95,9 @@ class _TeacherAttendanceMarkScreenState
           end: Alignment.bottomCenter,
         ),
       ),
-      child: const Center(child: CircularProgressIndicator()),
+      child: const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
     );
   }
 
@@ -171,6 +178,7 @@ class _TeacherAttendanceMarkScreenState
     );
   }
 
+  // 2. Используем label из Enum
   Widget _buildCurrentStatus(attendance) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -179,24 +187,26 @@ class _TeacherAttendanceMarkScreenState
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        "Текущий статус: ${attendance.status ?? 'не отмечен'}",
+        "Текущий статус: ${attendance.status?.label ?? 'не отмечен'}",
         style: const TextStyle(fontSize: 16, color: Colors.white60),
       ),
     );
   }
 
+  // 3. Используем Enum в кнопках
   Widget _buildActionButtons(String studentId) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _statusButton("Присутствует", Colors.green, studentId),
-        _statusButton("Отсутствует", Colors.red, studentId),
-        _statusButton("Опоздал", Colors.orange, studentId),
+        _statusButton(AttendanceStatus.present, studentId),
+        _statusButton(AttendanceStatus.absent, studentId),
+        _statusButton(AttendanceStatus.late, studentId),
       ],
     );
   }
 
-  Widget _statusButton(String label, Color color, String studentId) {
+  // 4. Метод принимает AttendanceStatus и берет цвет/текст из него
+  Widget _statusButton(AttendanceStatus status, String studentId) {
     return SizedBox(
       width: 80,
       height: 80,
@@ -204,10 +214,10 @@ class _TeacherAttendanceMarkScreenState
         onPressed: () {
           ref
               .read(lessonAttendanceMarkProvider.notifier)
-              .setAttendanceStatus(studentId, label);
+              .setAttendanceStatus(studentId, status);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.9),
+          backgroundColor: status.color.withOpacity(0.9), // Цвет из Enum
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -215,7 +225,7 @@ class _TeacherAttendanceMarkScreenState
           elevation: 4,
         ),
         child: Text(
-          label,
+          status.label, // Текст из Enum
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
@@ -257,7 +267,9 @@ class _TeacherAttendanceMarkScreenState
                 await ref
                     .read(lessonAttendanceMarkProvider.notifier)
                     .saveAttendance();
-                context.go('/teacher/home');
+                if (context.mounted) {
+                  context.go('/teacher/home');
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.purple.shade700,

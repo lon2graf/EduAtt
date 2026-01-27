@@ -1,9 +1,11 @@
+import 'package:edu_att/models/attendance_status.dart';
+
 class LessonAttendanceModel {
   final int? id;
   final int lessonId;
   final String studentId;
   final String? studentName;
-  String? status;
+  AttendanceStatus? status;
 
   final DateTime? lessonDate;
   final String? lessonStart;
@@ -34,6 +36,7 @@ class LessonAttendanceModel {
     final subject = schedule["subjects"] as Map<String, dynamic>? ?? {};
     final teacher = schedule["teachers"] as Map<String, dynamic>? ?? {};
     final students = json["students"] as Map<String, dynamic>? ?? {};
+    final status = AttendanceStatus.fromString(json["status"]);
 
     final studentName =
         '${students["name"] ?? ""} ${students["surname"] ?? ""}'.trim();
@@ -43,7 +46,7 @@ class LessonAttendanceModel {
       lessonId: json["lesson_id"] as int,
       studentId: json["student_id"].toString(),
       studentName: studentName.isEmpty ? null : studentName,
-      status: json["status"] as String?,
+      status: status,
       lessonDate:
           schedule["date"] != null ? DateTime.tryParse(schedule["date"]) : null,
       lessonStart: schedule["start_time"] as String?,

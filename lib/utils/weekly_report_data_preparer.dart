@@ -1,6 +1,7 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/attendance_report_data_model.dart';
 import 'package:edu_att/models/student_model.dart';
+import 'package:edu_att/models/attendance_status.dart'; // 1. Импорт Enum
 
 class WeeklyReportDataPreparer {
   WeeklyReportDataPreparer._();
@@ -12,11 +13,13 @@ class WeeklyReportDataPreparer {
     required List<StudentModel> allGroupStudents,
     required List<LessonAttendanceModel> rawRecords,
   }) {
-    final startDateStr = '${monday.day}.${monday.month}.${monday.year}';
-    final endDateStr = '${sunday.day}.${sunday.month}.${sunday.year}';
+    // 2. Исправлено форматирование дат (добавлены нули: 01.09 вместо 1.9)
+    final startDateStr =
+        '${monday.day.toString().padLeft(2, '0')}.${monday.month.toString().padLeft(2, '0')}.${monday.year}';
+    final endDateStr =
+        '${sunday.day.toString().padLeft(2, '0')}.${sunday.month.toString().padLeft(2, '0')}.${sunday.year}';
 
     // === ШАГ 1: Собираем все уникальные занятия за неделю ===
-    // Используем Set, чтобы избежать дубликатов lessonId
     final Set<int> uniqueLessonIds = {};
     final List<LessonAttendanceModel> lessonsList = [];
 
@@ -34,18 +37,17 @@ class WeeklyReportDataPreparer {
         b.lessonDate ?? DateTime(2000),
       );
       if (dateCompare != 0) return dateCompare;
-      // Сравниваем время как строки (формат HH:mm)
       return (a.lessonStart ?? '').compareTo(b.lessonStart ?? '');
     });
 
     // === ШАГ 2: Формируем заголовки ===
-    final List<String> dayHeaders = []; // ['Пн', 'Пн', 'Пн', 'Вт', ...]
-    final List<String> subjectHeaders = []; // ['Матем.', 'Информ.', ...]
+    final List<String> dayHeaders = [];
+    final List<String> subjectHeaders = [];
 
     for (final lesson in lessonsList) {
       if (lesson.lessonDate == null) continue;
-      final weekday = lesson.lessonDate!.weekday; // Пн=1, ..., Сб=6
-      if (weekday < 1 || weekday > 6) continue; // Игнорируем Вс
+      final weekday = lesson.lessonDate!.weekday;
+      if (weekday < 1 || weekday > 6) continue;
 
       final dayLabel = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][weekday - 1];
       dayHeaders.add(dayLabel);
@@ -60,25 +62,31 @@ class WeeklyReportDataPreparer {
         if (s.id != null) s.id!: '${s.surname} ${s.name}',
     };
 
-    // Карта: studentId -> {lessonId -> status}
+    // Карта: studentId -> {lessonId -> statusSymbol}
     final studentToLessonStatus = <String, Map<int, String>>{};
+
     for (final record in rawRecords) {
       studentToLessonStatus.putIfAbsent(record.studentId, () => {});
-      String status;
-      switch ((record.status ?? '').toLowerCase()) {
-        case 'присутствует':
-          status = '+';
+
+      String symbol;
+
+      // 3. Используем Enum для выбора символа в ведомости
+      // record.status теперь имеет тип AttendanceStatus?
+      switch (record.status) {
+        case AttendanceStatus.present:
+          symbol = '+';
           break;
-        case 'отсутствует':
-          status = '–';
+        case AttendanceStatus.absent:
+          symbol = '–'; // Тире
           break;
-        case 'опоздал':
-          status = 'ОП';
+        case AttendanceStatus.late:
+          symbol = 'ОП';
           break;
         default:
-          status = '';
+          symbol = ''; // Пусто, если статус не указан
       }
-      studentToLessonStatus[record.studentId]![record.lessonId] = status;
+
+      studentToLessonStatus[record.studentId]![record.lessonId] = symbol;
     }
 
     // === ШАГ 4: Формируем таблицу ===
@@ -108,14 +116,13 @@ class WeeklyReportDataPreparer {
       endDateStr: endDateStr,
       studentNames: studentNames,
       attendance: attendance,
-      dayHeaders: dayHeaders, // ← новые поля
+      dayHeaders: dayHeaders,
       subjectHeaders: subjectHeaders,
     );
   }
 
   static String _abbreviateSubject(String subject) {
     if (subject.isEmpty) return '';
-    // Простая аббревиатура: первые 5-7 символов + точка, если длинно
     if (subject.length <= 7) return subject;
     return '${subject.substring(0, 6)}.';
   }

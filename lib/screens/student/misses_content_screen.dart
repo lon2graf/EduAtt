@@ -1,3 +1,4 @@
+import 'package:edu_att/models/attendance_status.dart'; // Не забудь импортировать Enum!
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
@@ -114,7 +115,6 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   }
 
   Widget _buildDateNavigationHeader() {
-    // ... (всё то же самое)
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
       child: Row(
@@ -217,26 +217,29 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   }
 
   Widget _buildAttendanceCard(LessonAttendanceModel record) {
-    Color statusColor;
-    String statusText;
-    IconData statusIcon;
+    // 1. Парсим статус через наш Enum
 
-    switch (record.status?.toLowerCase()) {
-      case 'присутствует':
-        statusColor = Colors.green;
-        statusText = 'Присутствует';
+    final statusEnum = record.status;
+
+    // 2. Получаем данные из Enum (или дефолтные, если null)
+    final Color statusColor = statusEnum?.color ?? Colors.orange;
+    final String statusText = statusEnum?.label ?? 'Не указано';
+
+    // 3. Выбираем иконку (можно тоже вынести в Enum, но пока так)
+    IconData statusIcon;
+    switch (statusEnum) {
+      case AttendanceStatus.present:
         statusIcon = Icons.check_circle_rounded;
         break;
-      case 'отсутствует':
-        statusColor = Colors.red;
-        statusText = 'Отсутствует';
+      case AttendanceStatus.absent:
         statusIcon = Icons.event_busy_rounded;
         break;
-      default:
-        statusColor = Colors.orange;
-        statusText = 'Не указано';
-        statusIcon = Icons.help_outline_rounded;
+      case AttendanceStatus.late:
+        statusIcon =
+            Icons.access_time_rounded; // Или другая иконка для опоздания
         break;
+      default:
+        statusIcon = Icons.help_outline_rounded;
     }
 
     return Container(
@@ -272,6 +275,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                 child: InkWell(
                   onTap: () {
                     // Переход на экран детализации только для предметов с пропусками
+                    // Используем Enum для проверки, что это именно отсутствие
                     if (record.subjectName != null) {
                       context.push(
                         '/student/subject_absences?subject=${Uri.encodeComponent(record.subjectName!)}',
@@ -285,7 +289,9 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       decoration:
-                          record.subjectName != null
+                          // Подчеркиваем только если это пропуск (absent)
+                          (record.subjectName != null &&
+                                  statusEnum == AttendanceStatus.absent)
                               ? TextDecoration.underline
                               : TextDecoration.none,
                       decorationColor: Colors.white.withOpacity(0.6),
@@ -327,54 +333,27 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   }
 
   String _getWeekdayName(int weekday) {
-    switch (weekday) {
-      case 1:
-        return 'Пн';
-      case 2:
-        return 'Вт';
-      case 3:
-        return 'Ср';
-      case 4:
-        return 'Чт';
-      case 5:
-        return 'Пт';
-      case 6:
-        return 'Сб';
-      case 7:
-        return 'Вс';
-      default:
-        return '';
-    }
+    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    if (weekday >= 1 && weekday <= 7) return days[weekday - 1];
+    return '';
   }
 
   String _getMonthName(int month) {
-    switch (month) {
-      case 1:
-        return 'Янв';
-      case 2:
-        return 'Фев';
-      case 3:
-        return 'Мар';
-      case 4:
-        return 'Апр';
-      case 5:
-        return 'Май';
-      case 6:
-        return 'Июн';
-      case 7:
-        return 'Июл';
-      case 8:
-        return 'Авг';
-      case 9:
-        return 'Сен';
-      case 10:
-        return 'Окт';
-      case 11:
-        return 'Ноя';
-      case 12:
-        return 'Дек';
-      default:
-        return '';
-    }
+    const months = [
+      'Янв',
+      'Фев',
+      'Мар',
+      'Апр',
+      'Май',
+      'Июн',
+      'Июл',
+      'Авг',
+      'Сен',
+      'Окт',
+      'Ноя',
+      'Дек',
+    ];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return '';
   }
 }

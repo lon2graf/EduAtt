@@ -1,3 +1,4 @@
+import 'package:edu_att/models/attendance_status.dart'; // 1. Импорт Enum
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
@@ -12,13 +13,14 @@ class SubjectAbsencesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final allAttendances = ref.watch(attendanceProvider);
 
-    // Фильтруем только отсутствия по этому предмету
+    // 2. Исправленная фильтрация с использованием Enum
     final subjectAbsences =
         allAttendances
             .where(
               (attendance) =>
                   attendance.subjectName == subjectName &&
-                  attendance.status?.toLowerCase() == 'отсутствует',
+                  // Больше никаких строк! Сравниваем напрямую с Enum.
+                  attendance.status == AttendanceStatus.absent,
             )
             .toList();
 

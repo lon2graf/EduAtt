@@ -1,5 +1,6 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:edu_att/models/attendance_status.dart';
 
 class LessonsAttendanceService {
   // Метод для сохранения списка посещаемости в базу данных
@@ -110,7 +111,7 @@ class LessonsAttendanceService {
     final int presentCount =
         monthlyAttendances
             .where(
-              (attendance) => attendance.status?.toLowerCase() == 'присутсвует',
+              (attendance) => attendance.status == AttendanceStatus.present,
             )
             .length;
 
@@ -129,7 +130,7 @@ class LessonsAttendanceService {
     return allAttendances
         .where(
           (attendance) =>
-              attendance.status?.toLowerCase() == 'отсутствует' &&
+              attendance.status == AttendanceStatus.absent &&
               attendance.lessonDate != null &&
               attendance.lessonDate!.year == monthDate.year &&
               attendance.lessonDate!.month == monthDate.month,

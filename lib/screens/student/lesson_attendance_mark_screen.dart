@@ -1,7 +1,6 @@
+import 'package:edu_att/models/attendance_status.dart'; // Убедись, что путь правильный
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:edu_att/models/student_model.dart';
-import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
@@ -23,51 +22,45 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     final students = ref.watch(groupStudentsProvider);
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
 
+    // Инициализация данных, если список пуст
     if (students.isNotEmpty && attendanceList.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref
             .read(lessonAttendanceMarkProvider.notifier)
-            .initializeAttendance(
-              students,
-              ref.read(currentLessonProvider), // если нужен текущий урок
-            );
+            .initializeAttendance(students, ref.read(currentLessonProvider));
       });
     }
 
+    // Экран загрузки
     if (students.isEmpty || attendanceList.isEmpty) {
       return Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF4A148C), // Глубокий фиолетовый
-              Color(0xFF6A1B9A), // Темно-фиолетовый
-              Color(0xFF7B1FA2), // Ярче посередине
-            ],
+            colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             stops: [0.0, 0.5, 1.0],
           ),
         ),
-        child: const Center(child: CircularProgressIndicator()),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
       );
     }
 
     final currentStudent = students[currentStudentIndex];
+
+    // Безопасное получение статуса для текущего студента
     final currentAttendance = attendanceList.firstWhere(
       (item) => item.studentId == currentStudent.id,
+      orElse: () => attendanceList.first, // Заглушка на всякий случай
     );
 
-    // --- Основной Scaffold ---
     return Scaffold(
-      // Устанавливаем градиент как фон всего экрана
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF4A148C), // Глубокий фиолетовый
-              Color(0xFF6A1B9A), // Темно-фиолетовый
-              Color(0xFF7B1FA2), // Ярче посередине
-            ],
+            colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             stops: [0.0, 0.5, 1.0],
@@ -84,7 +77,6 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                   end: Alignment.bottomCenter,
                 ),
                 boxShadow: [
-                  // Тень для отделения от контента
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
@@ -120,7 +112,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 24), // Для симметрии
+                      const SizedBox(width: 24),
                     ],
                   ),
                 ),
@@ -132,13 +124,13 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
-                ), // Вуаль
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(18.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // --- Информация о студенте ---
+                      // --- Карточка студента ---
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -174,7 +166,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
 
                       const SizedBox(height: 24),
 
-                      // --- Текущий статус ---
+                      // --- Текущий статус (Текст) ---
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -185,7 +177,8 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          "Текущий статус: ${currentAttendance.status ?? 'не отмечен'}",
+                          // Здесь берем label из Enum или дефолтное значение
+                          "Текущий статус: ${currentAttendance.status?.label ?? 'не отмечен'}",
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.white60,
@@ -196,23 +189,20 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
 
                       const SizedBox(height: 36),
 
-                      // --- Кнопки для отметки ---
+                      // --- Кнопки для отметки (Используем Enum!) ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           _statusButton(
-                            "Присутствует",
-                            Colors.green,
+                            AttendanceStatus.present,
                             currentStudent.id!,
                           ),
                           _statusButton(
-                            "Отсутствует",
-                            Colors.red,
+                            AttendanceStatus.absent,
                             currentStudent.id!,
                           ),
                           _statusButton(
-                            "Опоздал",
-                            Colors.orange,
+                            AttendanceStatus.late,
                             currentStudent.id!,
                           ),
                         ],
@@ -220,10 +210,11 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
 
                       const SizedBox(height: 36),
 
-                      // --- Переключатель студентов ---
+                      // --- Навигация и Сохранение ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // Кнопка "Назад"
                           if (currentStudentIndex > 0)
                             IconButton(
                               onPressed:
@@ -242,6 +233,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                           else
                             const SizedBox(width: 48),
 
+                          // Счетчик
                           Text(
                             "${currentStudentIndex + 1} / ${students.length}",
                             style: const TextStyle(
@@ -251,6 +243,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                             ),
                           ),
 
+                          // Кнопка "Вперед" или "Сохранить"
                           if (currentStudentIndex < students.length - 1)
                             IconButton(
                               onPressed:
@@ -276,7 +269,9 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                                         lessonAttendanceMarkProvider.notifier,
                                       )
                                       .saveAttendance();
-                                  context.go('/student/home');
+                                  if (context.mounted) {
+                                    context.go('/student/home');
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.purple.shade700,
@@ -310,7 +305,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     );
   }
 
-  Widget _statusButton(String label, Color color, String studentId) {
+  Widget _statusButton(AttendanceStatus status, String studentId) {
     return SizedBox(
       width: 80,
       height: 80,
@@ -318,10 +313,10 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
         onPressed: () {
           ref
               .read(lessonAttendanceMarkProvider.notifier)
-              .setAttendanceStatus(studentId, label);
+              .setAttendanceStatus(studentId, status);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.9),
+          backgroundColor: status.color.withOpacity(0.9), // Цвет из Enum
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -331,7 +326,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
           padding: const EdgeInsets.all(8),
         ),
         child: Text(
-          label,
+          status.label, // Текст из Enum
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
