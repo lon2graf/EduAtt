@@ -1,4 +1,5 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
+import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/models/lesson_model.dart';
@@ -11,48 +12,103 @@ class LessonAttendanceMarkNotifier
   LessonAttendanceMarkNotifier() : super([]);
 
   /// Инициализация массива для текущего урока и студентов группы
-  void initialize(List<LessonAttendanceModel> attendances) {
-    state = attendances;
-  }
-
   void initializeAttendance(
     List<StudentModel> groupStudents,
     LessonModel? currentLesson,
-  ) {
-    state =
-        groupStudents.map((student) {
-          return LessonAttendanceModel(
-            lessonId: currentLesson?.id ?? 0,
-            studentId: student.id!,
-            studentName: student.name, // для отображения на экране
-            status: null, // пока не отмечен
-          );
-        }).toList();
+  ) async {
+    if (currentLesson == null || currentLesson.id == null) {
+      state = []; // Очищаем список или оставляем пустым
+      return;
+    }
+
+    final lesson = currentLesson;
+    final String lessonId = currentLesson.id!; // Изменено int → String
+
+    try {
+      List<LessonAttendanceModel> existingMarks = [];
+
+      // Теперь обращаемся к lesson (он точно существует)
+      final bool shouldLoadFromDb =
+          lesson.status == LessonAttendanceStatus.waitConfirmation ||
+          lesson.status == LessonAttendanceStatus.onTeacherEditing ||
+          lesson.status == LessonAttendanceStatus.confirmed;
+
+      if (shouldLoadFromDb) {
+        existingMarks = await LessonsAttendanceService.getAttendancesForLesson(
+          lessonId, // Теперь передаем String
+        );
+      }
+
+      final marksMap = {for (var mark in existingMarks) mark.studentId: mark};
+
+      state =
+          groupStudents.map((student) {
+            final existingMark = marksMap[student.id];
+
+            if (existingMark != null) {
+              return LessonAttendanceModel(
+                id: existingMark.id,
+                lessonId: lessonId, // Используем безопасный ID (теперь String)
+                studentId: student.id!,
+                studentName: student.name,
+                status: existingMark.status,
+              );
+            } else {
+              return LessonAttendanceModel(
+                lessonId: lessonId, // Используем безопасный ID (теперь String)
+                studentId: student.id!,
+                studentName: student.name,
+                status: null,
+              );
+            }
+          }).toList();
+    } catch (e) {
+      print('Ошибка инициализации ведомости: $e');
+      state =
+          groupStudents.map((student) {
+            return LessonAttendanceModel(
+              lessonId: lessonId,
+              studentId: student.id!,
+              studentName: student.name,
+              status: null,
+            );
+          }).toList();
+    }
   }
 
   /// Установка статуса посещаемости для конкретного студента
   void setAttendanceStatus(String studentId, AttendanceStatus status) {
-    for (final item in state) {
-      if (item.studentId == studentId) {
-        item.status = status; // просто меняем поле
-        break;
-      }
-    }
-    state = [...state]; // чтобы Riverpod заметил изменения
-  }
+    // Создаем копию состояния для неизменяемости
+    final newState =
+        state.map((item) {
+          if (item.studentId == studentId) {
+            // Создаем новый объект с обновленным статусом
+            return LessonAttendanceModel(
+              id: item.id,
+              lessonId: item.lessonId,
+              studentId: item.studentId,
+              studentName: item.studentName,
+              status: status,
+              lessonDate: item.lessonDate,
+              lessonStart: item.lessonStart,
+              lessonEnd: item.lessonEnd,
+              subjectName: item.subjectName,
+              teacherName: item.teacherName,
+              teacherSurname: item.teacherSurname,
+              groupId: item.groupId,
+            );
+          }
+          return item;
+        }).toList();
 
-  /// Получение студента по индексу
-  LessonAttendanceModel? getStudentAt(int index) {
-    if (index < 0 || index >= state.length) return null;
-    return state[index];
+    state = newState;
   }
 
   /// Сохранение данных на сервер (заглушка, можно реализовать вызов API)
   Future<void> saveAttendance() async {
     try {
       await LessonsAttendanceService.saveAttendances(state);
-      // Можно очистить или показать уведомление
-      state = []; // или оставить, если нужен повторный просмотр
+      state = [];
     } catch (e) {
       print('Ошибка при сохранении посещаемости: $e');
     }

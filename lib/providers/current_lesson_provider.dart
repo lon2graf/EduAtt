@@ -1,3 +1,4 @@
+import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/services/lesson_service.dart';
@@ -15,6 +16,12 @@ class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
   Future<void> loadCurrentLessonForTeacher(String teacherId) async {
     final lesson = await LessonService.getCurrentLessonForTeacher(teacherId);
     state = lesson;
+  }
+
+  void updateStatus(LessonAttendanceStatus newStatus) {
+    if (state == null) return;
+
+    state = state!.copyWith(status: newStatus);
   }
 }
 

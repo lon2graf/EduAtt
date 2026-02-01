@@ -1,7 +1,7 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/attendance_report_data_model.dart';
 import 'package:edu_att/models/student_model.dart';
-import 'package:edu_att/models/attendance_status.dart'; // 1. Импорт Enum
+import 'package:edu_att/models/attendance_status.dart';
 
 class WeeklyReportDataPreparer {
   WeeklyReportDataPreparer._();
@@ -13,18 +13,21 @@ class WeeklyReportDataPreparer {
     required List<StudentModel> allGroupStudents,
     required List<LessonAttendanceModel> rawRecords,
   }) {
-    // 2. Исправлено форматирование дат (добавлены нули: 01.09 вместо 1.9)
     final startDateStr =
         '${monday.day.toString().padLeft(2, '0')}.${monday.month.toString().padLeft(2, '0')}.${monday.year}';
     final endDateStr =
         '${sunday.day.toString().padLeft(2, '0')}.${sunday.month.toString().padLeft(2, '0')}.${sunday.year}';
 
     // === ШАГ 1: Собираем все уникальные занятия за неделю ===
-    final Set<int> uniqueLessonIds = {};
+    final Set<String> uniqueLessonIds = {}; // ✅ int → String
     final List<LessonAttendanceModel> lessonsList = [];
 
     for (final record in rawRecords) {
-      if (record.lessonId == 0 || record.lessonDate == null) continue;
+      // ✅ Проверка на пустой/нулевой ID заменена на безопасную для строк
+      if (record.lessonId == null ||
+          record.lessonId.isEmpty ||
+          record.lessonDate == null)
+        continue;
       if (uniqueLessonIds.contains(record.lessonId)) continue;
 
       uniqueLessonIds.add(record.lessonId);
@@ -59,33 +62,31 @@ class WeeklyReportDataPreparer {
     // === ШАГ 3: Подготавливаем данные по студентам ===
     final studentIdToName = <String, String>{
       for (final s in allGroupStudents)
-        if (s.id != null) s.id!: '${s.surname} ${s.name}',
+        if (s.id != null && s.id!.isNotEmpty) s.id!: '${s.surname} ${s.name}',
     };
 
-    // Карта: studentId -> {lessonId -> statusSymbol}
-    final studentToLessonStatus = <String, Map<int, String>>{};
+    // ✅ Карта теперь: studentId -> {lessonId (String) -> statusSymbol}
+    final studentToLessonStatus = <String, Map<String, String>>{};
 
     for (final record in rawRecords) {
       studentToLessonStatus.putIfAbsent(record.studentId, () => {});
 
       String symbol;
-
-      // 3. Используем Enum для выбора символа в ведомости
-      // record.status теперь имеет тип AttendanceStatus?
       switch (record.status) {
         case AttendanceStatus.present:
           symbol = '+';
           break;
         case AttendanceStatus.absent:
-          symbol = '–'; // Тире
+          symbol = '–';
           break;
         case AttendanceStatus.late:
           symbol = 'ОП';
           break;
         default:
-          symbol = ''; // Пусто, если статус не указан
+          symbol = '';
       }
 
+      // ✅ lessonId теперь строка
       studentToLessonStatus[record.studentId]![record.lessonId] = symbol;
     }
 
@@ -105,6 +106,7 @@ class WeeklyReportDataPreparer {
       final statusMap = studentToLessonStatus[studentId] ?? {};
       final statuses = <String>[];
       for (final lesson in lessonsList) {
+        // ✅ Используем строковый lessonId для поиска
         statuses.add(statusMap[lesson.lessonId] ?? '');
       }
       attendance.add(statuses);

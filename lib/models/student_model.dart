@@ -1,6 +1,5 @@
 class StudentModel {
   final String? id;
-  final String? institutionId;
   final String name;
   final String surname;
   final String? email;
@@ -10,10 +9,10 @@ class StudentModel {
   final String groupId;
   final String? groupName;
   final bool isHeadman;
+  final String? institution_id;
 
   StudentModel({
     this.id,
-    this.institutionId,
     required this.name,
     required this.surname,
     this.email,
@@ -23,6 +22,7 @@ class StudentModel {
     required this.groupId,
     this.groupName,
     required this.isHeadman,
+    this.institution_id,
   });
 
   factory StudentModel.fromJson(Map<String, dynamic> json) {
@@ -30,7 +30,6 @@ class StudentModel {
 
     return StudentModel(
       id: json['id'] as String?,
-      institutionId: json['institution_id'] as String?,
       name: json['name'] as String,
       surname: json['surname'] as String,
       email: json['email'] as String?,
@@ -43,21 +42,7 @@ class StudentModel {
       groupId: json['group_id'] as String,
       groupName: groups['name'] as String?,
       isHeadman: json['isHeadman'] as bool,
+      institution_id: groups['institution_id'] as String?,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id,
-      if (institutionId != null) 'institution_id': institutionId,
-      'name': name,
-      'surname': surname,
-      if (email != null) 'email': email,
-      if (password != null) 'password': password,
-      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
-      if (login != null) 'login': login,
-      'group_id': groupId,
-      'isHeadman': isHeadman,
-    };
   }
 }

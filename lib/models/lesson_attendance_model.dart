@@ -1,8 +1,8 @@
 import 'package:edu_att/models/attendance_status.dart';
 
 class LessonAttendanceModel {
-  final int? id;
-  final int lessonId;
+  final String? id; // Изменено на nullable
+  final String lessonId;
   final String studentId;
   final String? studentName;
   AttendanceStatus? status;
@@ -16,7 +16,7 @@ class LessonAttendanceModel {
   final String? groupId;
 
   LessonAttendanceModel({
-    this.id,
+    this.id, // Вернули nullable
     required this.lessonId,
     required this.studentId,
     this.studentName,
@@ -41,10 +41,48 @@ class LessonAttendanceModel {
     final studentName =
         '${students["name"] ?? ""} ${students["surname"] ?? ""}'.trim();
 
+    // Парсим lesson_id как String
+    final lessonId = json["lesson_id"];
+    final String lessonIdString;
+
+    if (lessonId is int) {
+      lessonIdString = lessonId.toString();
+    } else if (lessonId is String) {
+      lessonIdString = lessonId;
+    } else {
+      lessonIdString = '0';
+    }
+
+    // Парсим id как String (может быть null)
+    final id = json["id"];
+    final String? idString;
+
+    if (id == null) {
+      idString = null;
+    } else if (id is int) {
+      idString = id.toString();
+    } else if (id is String) {
+      idString = id;
+    } else {
+      idString = null; // Возвращаем null если тип не распознан
+    }
+
+    // Парсим student_id как String
+    final studentId = json["student_id"];
+    final String studentIdString;
+
+    if (studentId is int) {
+      studentIdString = studentId.toString();
+    } else if (studentId is String) {
+      studentIdString = studentId;
+    } else {
+      studentIdString = '';
+    }
+
     return LessonAttendanceModel(
-      id: json["id"] as int?,
-      lessonId: json["lesson_id"] as int,
-      studentId: json["student_id"].toString(),
+      id: idString, // Может быть null
+      lessonId: lessonIdString,
+      studentId: studentIdString,
       studentName: studentName.isEmpty ? null : studentName,
       status: status,
       lessonDate:
@@ -54,16 +92,16 @@ class LessonAttendanceModel {
       subjectName: subject["name"] as String?,
       teacherName: teacher["name"] as String?,
       teacherSurname: teacher["surname"] as String?,
-      groupId: schedule["group_id"] as String?, // ← безопасно извлекаем
+      groupId: schedule["group_id"] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
+      if (id != null) 'id': id, // Добавляем id только если он есть
       'lesson_id': lessonId,
       'student_id': studentId,
-      'status': status,
+      'status': status?.toString() ?? '',
     };
   }
 }

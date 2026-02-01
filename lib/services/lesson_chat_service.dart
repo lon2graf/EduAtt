@@ -2,10 +2,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/models/chat_message_model.dart';
 
 class LessonChatService {
-  //метод отправки сообщения
-  //возвращает null если все хорошо либо строку с ошибкой
+  // Метод отправки сообщения
+  // Возвращает null если всё хорошо, либо строку с ошибкой
   static Future<String?> sendMessage({
-    required int lessonId,
+    required String lessonId, // ✅ int → String
     required String message,
     required String senderId,
     required String senderType,
@@ -20,7 +20,7 @@ class LessonChatService {
       }
 
       final Map<String, dynamic> messageData = {
-        'lesson_id': lessonId,
+        'lesson_id': lessonId, // Передаём строку напрямую
         'message': message.trim(),
       };
 
@@ -53,13 +53,11 @@ class LessonChatService {
       return 'Сообщение слишком длинное. Максимум 2000 символов';
     }
 
-    // Проверка на сообщение только из пробелов (уже обработано trim)
-    // Дополнительные проверки можно добавить здесь
-
     return null; // Сообщение валидно
   }
 
-  static Future<List<ChatMessage>> getAllMessages(int lessonId) async {
+  static Future<List<ChatMessage>> getAllMessages(String lessonId) async {
+    // ✅ int → String
     final supClient = Supabase.instance.client;
 
     try {
@@ -70,7 +68,7 @@ class LessonChatService {
       teachers(name, surname),
       students(name, surname)  
     ''')
-          .eq('lesson_id', lessonId)
+          .eq('lesson_id', lessonId) // Строка напрямую в запрос
           .order('timestamp', ascending: true);
       return (response as List)
           .map((json) => ChatMessage.fromJson(json))
@@ -82,7 +80,7 @@ class LessonChatService {
   }
 
   static Future<List<ChatMessage>> getNewMessageSince({
-    required int lessonId,
+    required String lessonId, // ✅ int → String
     required DateTime since,
   }) async {
     final supClient = Supabase.instance.client;
@@ -96,7 +94,7 @@ class LessonChatService {
       teachers(name, surname),
       students(name, surname)  
     ''')
-          .eq('lesson_id', lessonId)
+          .eq('lesson_id', lessonId) // Строка напрямую в запрос
           .gt('timestamp', sinceUtc)
           .order('timestamp', ascending: true);
 

@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/chat_message_model.dart';
 import 'package:edu_att/services/lesson_chat_service.dart';
 import 'package:edu_att/services/chat_longpolling_service.dart';
@@ -31,12 +30,13 @@ class ChatState {
 
 /// Провайдер чата для конкретного урока (lessonId)
 final chatMessagesProvider = StateNotifierProvider.autoDispose
-    .family<ChatMessagesNotifier, ChatState, int>((ref, lessonId) {
+    .family<ChatMessagesNotifier, ChatState, String>((ref, lessonId) {
+      // ✅ int → String в типе family
       return ChatMessagesNotifier(lessonId);
     });
 
 class ChatMessagesNotifier extends StateNotifier<ChatState> {
-  final int lessonId;
+  final String lessonId; // ✅ int → String
   final ChatLongpollingService _pollingService = ChatLongpollingService();
 
   ChatMessagesNotifier(this.lessonId)
@@ -74,7 +74,8 @@ class ChatMessagesNotifier extends StateNotifier<ChatState> {
     // Фильтруем: не добавляем, если message с таким id уже есть
     final existingIds = {
       for (final msg in state.messages)
-        if (msg.id != null && msg.id != -1) msg.id!,
+        if (msg.id != null && msg.id != '-1')
+          msg.id!, // ✅ Сравнение с '-1' для строкового id
     };
 
     final unique =

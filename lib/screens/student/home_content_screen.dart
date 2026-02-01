@@ -1,4 +1,3 @@
-import 'package:edu_att/services/lesson_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
@@ -9,6 +8,7 @@ import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
+import 'package:edu_att/models/lesson_attendance_status.dart';
 
 class HomeContentScreen extends ConsumerWidget {
   const HomeContentScreen({super.key});

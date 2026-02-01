@@ -4,11 +4,11 @@ import 'dart:async';
 
 class ChatLongpollingService {
   Timer? _timer;
-  int? _currentLessonId;
+  String? _currentLessonId; // ✅ int → String
   DateTime? _lastMessageTime;
 
   void startForLesson({
-    required int lessonId,
+    required String lessonId, // ✅ int → String
     required DateTime lastMessageDateTime,
     required void Function(List<ChatMessage>) onNewMessage,
     Duration interval = const Duration(seconds: 5),
@@ -48,6 +48,6 @@ class ChatLongpollingService {
     _lastMessageTime = null;
   }
 
-  bool isActiveForLesson(int lessonId) =>
+  bool isActiveForLesson(String lessonId) => // ✅ int → String
       _timer != null && _currentLessonId == lessonId;
 }

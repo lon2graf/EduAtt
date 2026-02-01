@@ -19,14 +19,13 @@ class StudentServices {
       surname,
       email,
       login,
-      institution_id,
       group_id,
       isHeadman,
-      groups (name)
+      groups!inner (name, institution_id)
     ''')
               .eq('email', email)
               .eq('password', password)
-              .eq('institution_id', institutionId)
+              .eq('groups.institution_id', institutionId)
               .single();
 
       //if (response == null) return null; // не найден студент

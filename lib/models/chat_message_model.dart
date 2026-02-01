@@ -1,6 +1,6 @@
 class ChatMessage {
-  final int? id; // INT, может быть null при отправке
-  final int lessonId; // INT
+  final String? id; // Изменено int? → String?
+  final String lessonId; // Изменено int → String
   final String message;
   final DateTime timestamp;
 
@@ -13,7 +13,7 @@ class ChatMessage {
   final String? senderSurname;
   final String senderType;
 
-  bool get isTemporary => id == null || id == -1;
+  bool get isTemporary => id == null || id == '-1'; // Изменено условие
 
   ChatMessage({
     this.id,
@@ -44,33 +44,35 @@ class ChatMessage {
       senderSurname = student['surname'] as String?;
     }
 
-    // Парсим id как int
+    // Парсим id как String
     final id = json['id'];
-    final int? idInt;
+    final String? idString;
 
-    if (id is int) {
-      idInt = id;
+    if (id == null) {
+      idString = null;
+    } else if (id is int) {
+      idString = id.toString();
     } else if (id is String) {
-      idInt = int.tryParse(id);
+      idString = id;
     } else {
-      idInt = null;
+      idString = id.toString();
     }
 
-    // Парсим lesson_id как int
+    // Парсим lesson_id как String
     final lessonId = json['lesson_id'];
-    final int lessonIdInt;
+    final String lessonIdString;
 
     if (lessonId is int) {
-      lessonIdInt = lessonId;
+      lessonIdString = lessonId.toString();
     } else if (lessonId is String) {
-      lessonIdInt = int.tryParse(lessonId) ?? 0;
+      lessonIdString = lessonId;
     } else {
-      lessonIdInt = 0;
+      lessonIdString = '0';
     }
 
     return ChatMessage(
-      id: idInt, // ← int?
-      lessonId: lessonIdInt, // ← int
+      id: idString, // ← String?
+      lessonId: lessonIdString, // ← String
       message: json['message'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       senderTeacherId: json['sender_teacher_id'] as String?,
@@ -99,7 +101,7 @@ class ChatMessage {
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{
-      'lesson_id': lessonId,
+      'lesson_id': lessonId, // Теперь String
       'message': message,
       'timestamp': timestamp.toIso8601String(),
     };
@@ -115,7 +117,7 @@ class ChatMessage {
 
   // Создание временного сообщения
   factory ChatMessage.temporary({
-    required int lessonId,
+    required String lessonId, // Изменено int → String
     required String message,
     required String senderId,
     required String senderType,
@@ -123,7 +125,7 @@ class ChatMessage {
     String? senderSurname,
   }) {
     return ChatMessage(
-      id: -1, // ← специальное значение для временных
+      id: '-1', // ← специальное значение для временных (теперь String)
       lessonId: lessonId,
       message: message,
       timestamp: DateTime.now(),

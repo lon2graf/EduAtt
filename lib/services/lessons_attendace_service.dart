@@ -139,13 +139,14 @@ class LessonsAttendanceService {
   }
 
   // Проверяет, есть ли записи посещаемости для конкретного урока
-  static Future<bool> isLessonMarked(int lessonId) async {
+  static Future<bool> isLessonMarked(String lessonId) async {
+    // Изменено int → String
     final supClient = Supabase.instance.client;
     try {
       final response = await supClient
           .from('lesson_attendances')
           .select('id') // Нам нужен только факт существования ID
-          .eq('lesson_id', lessonId)
+          .eq('lesson_id', lessonId) // Теперь String
           .limit(1); // Достаточно найти хотя бы одну запись
 
       // Если список не пуст, значит урок уже отмечен
@@ -211,5 +212,25 @@ class LessonsAttendanceService {
 
   static String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  static Future<List<LessonAttendanceModel>> getAttendancesForLesson(
+    String lessonId, // Изменено int → String
+  ) async {
+    final supClient = Supabase.instance.client;
+
+    try {
+      final response = await supClient
+          .from('lesson_attendances')
+          .select()
+          .eq('lesson_id', lessonId); // Теперь String
+
+      return (response as List)
+          .map((json) => LessonAttendanceModel.fromNestedJson(json))
+          .toList();
+    } catch (e) {
+      print('Ошибка при загрузке отметок для урока $lessonId: $e');
+      return []; // В случае ошибки возвращаем пустой список, чтобы приложение не упало
+    }
   }
 }
