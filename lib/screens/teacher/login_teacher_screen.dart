@@ -128,10 +128,10 @@ class _TeacherLoginScreenState extends ConsumerState<TeacherLoginScreen> {
                           onTap: () {
                             setState(() {
                               selectedInstitutionId =
-                                  '73ba4892-2449-4a4f-bf93-30c222965b59';
+                                  '761584a9-07a1-4e5f-9549-7911ab5bc1b5';
                             });
-                            loginController.text = 'artem.z@kfu.ru';
-                            passwordController.text = 'pass123';
+                            loginController.text = 'fedorov@mpcit.ru';
+                            passwordController.text = 'myhash_t12';
                           },
                           child: Opacity(
                             opacity: 0.0,

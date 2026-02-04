@@ -20,7 +20,7 @@ class StudentServices {
       email,
       login,
       group_id,
-      isHeadman,
+      isheadman,
       groups!inner (name, institution_id)
     ''')
               .eq('email', email)
@@ -47,7 +47,7 @@ class StudentServices {
         name,
         surname,
         group_id,
-        isHeadman
+        isheadman
       ''') // Выбираем все нужные поля
           .eq('group_id', groupId); // Фильтруем по group_id
 

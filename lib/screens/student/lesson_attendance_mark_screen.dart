@@ -1,4 +1,6 @@
-import 'package:edu_att/models/attendance_status.dart'; // Убедись, что путь правильный
+import 'package:edu_att/models/attendance_status.dart';
+import 'package:edu_att/models/lesson_attendance_status.dart';
+import 'package:edu_att/services/lesson_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/group_provider.dart';
@@ -21,13 +23,15 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
   Widget build(BuildContext context) {
     final students = ref.watch(groupStudentsProvider);
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
+    final lesson = ref.watch(currentLessonProvider);
 
     // Инициализация данных, если список пуст
     if (students.isNotEmpty && attendanceList.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Передаем lesson (может быть null, но провайдер это обработает)
         ref
             .read(lessonAttendanceMarkProvider.notifier)
-            .initializeAttendance(students, ref.read(currentLessonProvider));
+            .initializeAttendance(students, lesson);
       });
     }
 
@@ -53,7 +57,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     // Безопасное получение статуса для текущего студента
     final currentAttendance = attendanceList.firstWhere(
       (item) => item.studentId == currentStudent.id,
-      orElse: () => attendanceList.first, // Заглушка на всякий случай
+      orElse: () => attendanceList.first, // Заглушка
     );
 
     return Scaffold(
@@ -177,7 +181,6 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          // Здесь берем label из Enum или дефолтное значение
                           "Текущий статус: ${currentAttendance.status?.label ?? 'не отмечен'}",
                           style: const TextStyle(
                             fontSize: 16,
@@ -214,7 +217,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Кнопка "Назад"
+                          // Кнопка "Назад" (по студентам)
                           if (currentStudentIndex > 0)
                             IconButton(
                               onPressed:
@@ -260,17 +263,94 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                               ),
                             )
                           else
+                            // === КНОПКА СОХРАНЕНИЯ С ПРОВЕРКОЙ ===
                             SizedBox(
                               height: 48,
                               child: ElevatedButton(
                                 onPressed: () async {
-                                  await ref
-                                      .read(
-                                        lessonAttendanceMarkProvider.notifier,
-                                      )
-                                      .saveAttendance();
-                                  if (context.mounted) {
-                                    context.go('/student/home');
+                                  if (lesson == null || lesson.id == null)
+                                    return;
+
+                                  // 1. Check: Проверяем, не перехватил ли препод управление
+                                  // Делаем легкий запрос к базе
+                                  final freshStatus =
+                                      await LessonService.getFreshStatus(
+                                        lesson.id!,
+                                      );
+
+                                  // Если статус уже не "Староста редактирует"
+                                  if (freshStatus !=
+                                      LessonAttendanceStatus.onHeadmanEditing) {
+                                    if (context.mounted) {
+                                      // Показываем ошибку
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Ошибка! Управление перехвачено преподавателем.',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          duration: Duration(seconds: 3),
+                                        ),
+                                      );
+                                      // Обновляем статус локально (чтобы сбросить UI) и уходим
+                                      ref
+                                          .read(currentLessonProvider.notifier)
+                                          .loadCurrentLesson(lesson.groupId);
+                                      context.go('/student/home');
+                                    }
+                                    return; // ПРЕРЫВАЕМ СОХРАНЕНИЕ
+                                  }
+
+                                  try {
+                                    // 2. Save: Сохраняем данные посещаемости
+                                    await ref
+                                        .read(
+                                          lessonAttendanceMarkProvider.notifier,
+                                        )
+                                        .saveAttendance();
+
+                                    // 3. Update Status: Меняем статус на "Ждет подтверждения"
+                                    await LessonService.updateLessonStatus(
+                                      lesson.id!,
+                                      LessonAttendanceStatus.waitConfirmation,
+                                    );
+
+                                    // Обновляем локально, чтобы кнопка на главной стала синей
+                                    ref
+                                        .read(currentLessonProvider.notifier)
+                                        .updateStatus(
+                                          LessonAttendanceStatus
+                                              .waitConfirmation,
+                                        );
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Отправлено на проверку!',
+                                          ),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                      context.go('/student/home');
+                                    }
+                                  } catch (e) {
+                                    print("Ошибка сохранения: $e");
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Ошибка при сохранении: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(

@@ -9,12 +9,39 @@ import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/models/lesson_model.dart';
+import 'package:edu_att/models/lesson_attendance_status.dart'; // Enum
+import 'package:edu_att/services/lesson_service.dart'; // Service
 
-class TeacherHomeContentScreen extends ConsumerWidget {
+// 1. Делаем Stateful, чтобы загружать данные при входе
+class TeacherHomeContentScreen extends ConsumerStatefulWidget {
   const TeacherHomeContentScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TeacherHomeContentScreen> createState() =>
+      _TeacherHomeContentScreenState();
+}
+
+class _TeacherHomeContentScreenState
+    extends ConsumerState<TeacherHomeContentScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
+  }
+
+  Future<void> _loadInitialData() async {
+    final teacher = ref.read(teacherProvider);
+    if (teacher != null) {
+      await ref
+          .read(currentLessonProvider.notifier)
+          .loadCurrentLessonForTeacher(teacher.id!);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final teacher = ref.watch(teacherProvider);
     final lesson = ref.watch(currentLessonProvider);
 
@@ -34,21 +61,13 @@ class TeacherHomeContentScreen extends ConsumerWidget {
             decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
             child: SafeArea(
               child: RefreshIndicator(
-                onRefresh: () async {
-                  print("ищу текущее занятие");
-                  if (teacher == null) return;
-                  await ref
-                      .read(currentLessonProvider.notifier)
-                      .loadCurrentLessonForTeacher(teacher.id!);
-                },
-
+                onRefresh: _loadInitialData,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Приветствие
                       Text(
                         'Привет, ${teacher?.name ?? 'Преподаватель'}! 👋',
                         style: const TextStyle(
@@ -58,11 +77,9 @@ class TeacherHomeContentScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Текущее занятие
                       _buildSectionTitle('Текущее занятие'),
                       const SizedBox(height: 10),
-                      _buildCurrentLessonCard(ref, context, lesson),
+                      _buildCurrentLessonCard(lesson),
                     ],
                   ),
                 ),
@@ -74,11 +91,7 @@ class TeacherHomeContentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCurrentLessonCard(
-    WidgetRef ref,
-    BuildContext context,
-    LessonModel? lesson,
-  ) {
+  Widget _buildCurrentLessonCard(LessonModel? lesson) {
     if (lesson == null || lesson.id == null) {
       return _buildCard(
         child: const Center(
@@ -92,9 +105,6 @@ class TeacherHomeContentScreen extends ConsumerWidget {
 
     String formattedStartTime = _formatTime(lesson.startTime);
     String formattedEndTime = _formatTime(lesson.endTime);
-    String teacherFullName =
-        '${lesson.teacherName ?? ''} ${lesson.teacherSurname ?? ''}'.trim();
-    if (teacherFullName.isEmpty) teacherFullName = 'Не указан';
 
     return _buildCard(
       child: Column(
@@ -115,12 +125,15 @@ class TeacherHomeContentScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'Преподаватель: $teacherFullName',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
+            'Группа: ${lesson.groupId}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
 
-          // 🔹 Кнопка "Чат урока" — для всех преподавателей
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
@@ -130,13 +143,9 @@ class TeacherHomeContentScreen extends ConsumerWidget {
               icon: const Icon(Icons.chat_bubble_outline, size: 16),
               label: const Text('Чат урока', style: TextStyle(fontSize: 14)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade700,
+                backgroundColor: Colors.white.withOpacity(0.1),
                 foregroundColor: Colors.white,
-                elevation: 4,
-                shadowColor: Colors.black.withOpacity(0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 6,
@@ -145,75 +154,142 @@ class TeacherHomeContentScreen extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
 
-          // 🔸 Кнопка "Отметить" (с логикой проверки)
-          FutureBuilder<bool>(
-            future: LessonsAttendanceService.isLessonMarked(lesson.id!),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                );
-              }
-
-              final bool isMarked = snapshot.data ?? false;
-
-              return ElevatedButton.icon(
-                onPressed:
-                    isMarked
-                        ? null
-                        : () async {
-                          if (lesson.groupId.isNotEmpty) {
-                            await ref
-                                .read(groupStudentsProvider.notifier)
-                                .loadGroupStudents(lesson.groupId);
-                            if (context.mounted) {
-                              context.go('/teacher/mark');
-                            }
-                          }
-                        },
-                icon: Icon(
-                  isMarked
-                      ? Icons.check_circle
-                      : Icons.check_circle_outline_rounded,
-                  size: 16,
-                ),
-                label: Text(
-                  isMarked ? 'Уже отмечено' : 'Отметить',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isMarked
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.purple.shade700,
-                  foregroundColor: isMarked ? Colors.white60 : Colors.white,
-                  elevation: isMarked ? 0 : 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                ),
-              );
-            },
-          ),
+          // 2. Умная кнопка действия
+          _buildTeacherAction(lesson),
         ],
       ),
     );
   }
 
+  Widget _buildTeacherAction(LessonModel lesson) {
+    String btnText = 'Начать перекличку';
+    Color btnColor = Colors.purple.shade700;
+    IconData btnIcon = Icons.edit_square;
+    bool isDangerAction = false; // Флаг для перехвата
+
+    switch (lesson.status) {
+      case LessonAttendanceStatus.free:
+        btnText = 'Начать перекличку';
+        break;
+      case LessonAttendanceStatus.onHeadmanEditing:
+        btnText = 'Перехватить у старосты'; // Опасное действие
+        btnColor = Colors.orange.shade800;
+        btnIcon = Icons.warning_amber_rounded;
+        isDangerAction = true;
+        break;
+      case LessonAttendanceStatus.waitConfirmation:
+        btnText = 'Проверить и Подтвердить';
+        btnColor = Colors.blue.shade700;
+        btnIcon = Icons.fact_check_outlined;
+        break;
+      case LessonAttendanceStatus.onTeacherEditing:
+        btnText = 'Продолжить заполнение';
+        break;
+      case LessonAttendanceStatus.confirmed:
+        btnText = 'Изменить (Подтверждено)';
+        btnColor = Colors.grey.withOpacity(0.4);
+        btnIcon = Icons.lock_open;
+        break;
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          // 1. Проверяем свежий статус перед действием
+          final freshStatus = await LessonService.getFreshStatus(lesson.id!);
+
+          // Если мы думали что Free, а там уже кто-то сидит -> Обновляем и выходим
+          if (freshStatus != lesson.status) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Статус урока изменился. Обновление...'),
+                ),
+              );
+              _loadInitialData();
+            }
+            return;
+          }
+
+          // 2. Если это перехват (староста сидит) -> Показываем диалог
+          if (isDangerAction) {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder:
+                  (ctx) => AlertDialog(
+                    title: const Text('Перехватить управление?'),
+                    content: const Text(
+                      'Ведомость сейчас заполняет староста. Если вы продолжите, его несохраненные данные будут потеряны, и заполнение начнется заново.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Отмена'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text('Перехватить'),
+                      ),
+                    ],
+                  ),
+            );
+
+            if (confirm != true) return; // Если нажал отмену
+          }
+
+          // 3. Выполняем переход
+          _enterEditMode(lesson);
+        },
+        icon: Icon(btnIcon, size: 18),
+        label: Text(btnText),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: btnColor,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enterEditMode(LessonModel lesson) async {
+    try {
+      // 1. Обновляем статус в БД (Занимаем урок)
+      await LessonService.updateLessonStatus(
+        lesson.id!,
+        LessonAttendanceStatus.onTeacherEditing,
+      );
+
+      // 2. Обновляем локально
+      ref
+          .read(currentLessonProvider.notifier)
+          .updateStatus(LessonAttendanceStatus.onTeacherEditing);
+
+      // 3. Грузим студентов и переходим
+      if (lesson.groupId.isNotEmpty) {
+        await ref
+            .read(groupStudentsProvider.notifier)
+            .loadGroupStudents(lesson.groupId);
+        if (mounted) context.go('/teacher/mark');
+      }
+    } catch (e) {
+      print("Ошибка при входе: $e");
+    }
+  }
+
+  // ... (методы _formatTime, _buildCard, _buildSectionTitle) ...
   String _formatTime(String? timeString) {
     if (timeString == null || timeString.isEmpty) return '--:--';
-    final parts = timeString.split(':');
+    List<String> parts = timeString.split(':');
     if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
     return timeString;
   }

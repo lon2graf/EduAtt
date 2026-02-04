@@ -101,7 +101,7 @@ class LessonAttendanceModel {
       if (id != null) 'id': id, // Добавляем id только если он есть
       'lesson_id': lessonId,
       'student_id': studentId,
-      'status': status?.toString() ?? '',
+      'status': status?.toDbValue,
     };
   }
 }

@@ -1,11 +1,10 @@
-// lib/screens/lesson_chat_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/providers/chat_messages_provider.dart';
-import 'package:edu_att/models/chat_message_model.dart';
+// import 'package:edu_att/models/chat_message_model.dart'; // Если нужен
 import 'package:go_router/go_router.dart';
 
 class LessonChatScreen extends ConsumerStatefulWidget {
@@ -23,9 +22,16 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
   Widget build(BuildContext context) {
     // 1. Получаем текущий урок
     final currentLesson = ref.watch(currentLessonProvider);
+
     if (currentLesson == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Чат урока')),
+        appBar: AppBar(
+          title: const Text('Чат урока'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _navigateBack(), // Используем умную навигацию
+          ),
+        ),
         body: const Center(child: Text('Сейчас занятий нет')),
       );
     }
@@ -51,7 +57,13 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
     // 3. Подключаем чат
     if (currentLesson.id == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Чат урока')),
+        appBar: AppBar(
+          title: const Text('Чат урока'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _navigateBack(),
+          ),
+        ),
         body: const Center(
           child: Text('Невозможно открыть чат: у урока нет ID'),
         ),
@@ -66,12 +78,11 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(chatState.error!)));
-        // Очистка ошибки (опционально)
       });
     }
 
-    // 5. Отправка сообщения
-    void _sendMessage() {
+    // Функция отправки
+    void sendMessage() {
       final text = _textController.text.trim();
       if (text.isEmpty || currentUserId == null || currentUserType == null)
         return;
@@ -90,18 +101,20 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.purple,
-        title: Text('Чат: ${currentLesson.subjectName}'),
+        backgroundColor: Colors.purple.shade700,
+        foregroundColor: Colors.white,
+        title: Text(
+          'Чат: ${currentLesson.subjectName}',
+          style: const TextStyle(fontSize: 18),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            context.go('/student/home');
-          },
+          onPressed: () => _navigateBack(), // <--- ИСПРАВЛЕНО ТУТ
         ),
       ),
       body: Column(
         children: [
-          // → Список сообщений
+          // Список сообщений
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -109,57 +122,69 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
               itemBuilder: (context, index) {
                 final msg = chatState.messages[index];
                 final isOwn = msg.senderId == currentUserId;
+
+                // Отображаемое имя
                 final displayName =
                     isOwn ? currentUserLabel : msg.senderFullName;
 
                 return Container(
                   margin: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   child: Align(
                     alignment:
                         isOwn ? Alignment.centerRight : Alignment.centerLeft,
                     child: Container(
                       padding: const EdgeInsets.all(12),
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                      ),
                       decoration: BoxDecoration(
                         color:
                             isOwn
-                                ? Colors.purple.shade300
-                                : Colors.grey.shade600,
-                        borderRadius: BorderRadius.circular(12),
+                                ? Colors.purple.shade100
+                                : Colors.grey.shade200,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(12),
+                          topRight: const Radius.circular(12),
+                          bottomLeft:
+                              isOwn ? const Radius.circular(12) : Radius.zero,
+                          bottomRight:
+                              isOwn ? Radius.zero : const Radius.circular(12),
+                        ),
                       ),
                       child: Column(
-                        crossAxisAlignment:
-                            isOwn
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Имя отправителя
                           Text(
                             displayName,
                             style: TextStyle(
-                              color: isOwn ? Colors.white70 : Colors.white,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              color:
+                                  isOwn
+                                      ? Colors.purple.shade900
+                                      : Colors.black54,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          // Текст сообщения
                           Text(
                             msg.message,
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 15,
+                              color: Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          // Время
-                          Text(
-                            '${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Text(
+                              "${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}",
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black45,
+                              ),
                             ),
                           ),
                         ],
@@ -171,30 +196,36 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
             ),
           ),
 
-          // → Поле ввода (только если авторизован)
+          // Поле ввода
           if (currentUserId != null)
-            Padding(
+            Container(
               padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _textController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'Сообщение...',
-                        filled: true,
-                        fillColor: Colors.white24,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      onSubmitted: (_) => _sendMessage(),
+                      onSubmitted: (_) => sendMessage(),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _sendMessage,
+                    icon: Icon(Icons.send, color: Colors.purple.shade700),
+                    onPressed: sendMessage,
                   ),
                 ],
               ),
@@ -202,6 +233,18 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
         ],
       ),
     );
+  }
+
+  // --- НОВЫЙ МЕТОД НАВИГАЦИИ ---
+  void _navigateBack() {
+    // Проверяем, кто залогинен
+    final isTeacher = ref.read(teacherProvider) != null;
+
+    if (isTeacher) {
+      context.go('/teacher/home');
+    } else {
+      context.go('/student/home');
+    }
   }
 
   @override

@@ -41,7 +41,7 @@ class StudentModel {
       login: json['login'] as String?,
       groupId: json['group_id'] as String,
       groupName: groups['name'] as String?,
-      isHeadman: json['isHeadman'] as bool,
+      isHeadman: json['isheadman'] as bool,
       institution_id: groups['institution_id'] as String?,
     );
   }

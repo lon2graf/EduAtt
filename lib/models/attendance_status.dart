@@ -5,28 +5,40 @@ enum AttendanceStatus {
   absent,
   late;
 
+  /// Парсинг из строки (из БД или UI)
   static AttendanceStatus? fromString(String? value) {
     if (value == null) return null;
+
+    // Приводим к нижнему регистру и убираем пробелы
     switch (value.toLowerCase().trim()) {
-      case 'присутствует':
+      // Английские ключи (как мы хотим хранить в БД)
       case 'present':
+      // Русские варианты и символы (для совместимости)
+      case 'присутствует':
       case '+':
+      case 'attendanceStatus.present': // На случай если в БД уже записалось неправильно
         return AttendanceStatus.present;
-      case 'отсутствует':
+
       case 'absent':
-      case '–': // тире
-      case '-': // дефис
+      case 'отсутствует':
+      case '-':
+      case '–':
+      case 'attendanceStatus.absent':
         return AttendanceStatus.absent;
-      case 'опоздал':
+
       case 'late':
+      case 'опоздал':
       case 'оп':
+      case 'attendanceStatus.late':
         return AttendanceStatus.late;
+
       default:
         return null;
     }
   }
 
-  String toDbValue() {
+  /// То, что записываем в БД (Геттер)
+  String get toDbValue {
     switch (this) {
       case AttendanceStatus.present:
         return 'present';
@@ -37,7 +49,7 @@ enum AttendanceStatus {
     }
   }
 
-  /// Текст для отображения в UI
+  /// Текст для UI
   String get label {
     switch (this) {
       case AttendanceStatus.present:
@@ -49,6 +61,7 @@ enum AttendanceStatus {
     }
   }
 
+  /// Цвет для UI
   Color get color {
     switch (this) {
       case AttendanceStatus.present:

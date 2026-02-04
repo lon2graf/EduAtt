@@ -6,6 +6,8 @@ import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
+import 'package:edu_att/models/lesson_attendance_status.dart';
+import 'package:edu_att/services/lesson_service.dart';
 
 class TeacherAttendanceMarkScreen extends ConsumerStatefulWidget {
   const TeacherAttendanceMarkScreen({super.key});
@@ -264,15 +266,43 @@ class _TeacherAttendanceMarkScreenState
             height: 48,
             child: ElevatedButton(
               onPressed: () async {
-                await ref
-                    .read(lessonAttendanceMarkProvider.notifier)
-                    .saveAttendance();
-                if (context.mounted) {
-                  context.go('/teacher/home');
+                final lesson = ref.read(currentLessonProvider);
+
+                try {
+                  // 1. Сохраняем данные посещаемости
+                  await ref
+                      .read(lessonAttendanceMarkProvider.notifier)
+                      .saveAttendance();
+
+                  // 2. Ставим статус "Confirmed"
+                  if (lesson?.id != null) {
+                    await LessonService.updateLessonStatus(
+                      lesson!.id!,
+                      LessonAttendanceStatus.confirmed,
+                    );
+
+                    // Обновляем локально, чтобы кнопка стала серой
+                    ref
+                        .read(currentLessonProvider.notifier)
+                        .updateStatus(LessonAttendanceStatus.confirmed);
+                  }
+
+                  if (context.mounted) {
+                    context.go('/teacher/home');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Ведомость подтверждена!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  print("Ошибка сохранения: $e");
                 }
               },
+              // Зеленый цвет для подтверждения
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade700,
+                backgroundColor: Colors.green.shade700,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -280,7 +310,7 @@ class _TeacherAttendanceMarkScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 20),
               ),
               child: const Text(
-                "Сохранить",
+                "Подтвердить",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
