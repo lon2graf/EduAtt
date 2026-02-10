@@ -1,4 +1,3 @@
-// lib/screens/teacher/teacher_weekly_report_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -55,27 +54,124 @@ class _TeacherWeeklyReportScreenState
     }
   }
 
-  DateTime _getMonday(DateTime date) {
-    return DateTime(date.year, date.month, date.day - (date.weekday - 1));
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final teacher = ref.watch(teacherProvider);
+
+    if (teacher == null) {
+      return _buildAccessDenied(context);
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ведомость по группе')),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Иконка-иллюстрация
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.analytics_outlined,
+                  size: 64,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              Text(
+                'Выберите группу и неделю',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Для формирования PDF-отчета',
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Выбор группы
+              if (_groups.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  value: _selectedGroupId,
+                  items:
+                      _groups.map((group) {
+                        return DropdownMenuItem(
+                          value: group.id,
+                          child: Text(
+                            group.name,
+                            style: TextStyle(color: colorScheme.onSurface),
+                          ),
+                        );
+                      }).toList(),
+                  onChanged:
+                      (value) => setState(() => _selectedGroupId = value),
+                  dropdownColor: colorScheme.surface,
+                  decoration: InputDecoration(
+                    labelText: 'Группа',
+                    filled: true,
+                    fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                  ),
+                )
+              else
+                const CircularProgressIndicator(),
+
+              const SizedBox(height: 24),
+
+              // Кнопка генерации
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: () => _selectWeekAndGenerate(context, teacher),
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text(
+                    'Создать ведомость',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  DateTime _getSunday(DateTime date) {
-    final monday = _getMonday(date);
-    return DateTime(monday.year, monday.month, monday.day + 6);
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}.${date.month}.${date.year}';
-  }
-
-  String _formatFilenameDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
+  // --- Логика генерации (без изменений в алгоритме, только UI-фикс) ---
 
   Future<void> _selectWeekAndGenerate(
     BuildContext context,
     TeacherModel teacher,
   ) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (_selectedGroupId == null) {
       ScaffoldMessenger.of(
         context,
@@ -100,7 +196,9 @@ class _TeacherWeeklyReportScreenState
       builder:
           (ctx) => AlertDialog(
             title: const Text('Создать ведомость?'),
-            content: Text('За неделю:\n$period'),
+            content: Text(
+              'Группа: ${_groups.firstWhere((g) => g.id == _selectedGroupId).name}\nПериод: $period',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -108,24 +206,24 @@ class _TeacherWeeklyReportScreenState
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                ),
                 child: const Text('Создать'),
               ),
             ],
           ),
     );
+
     if (confirm != true) return;
 
     try {
-      // Получаем название группы для PDF
       final groupName =
           _groups.firstWhere((g) => g.id == _selectedGroupId).name;
-
-      // Загружаем студентов выбранной группы
       final allStudents = await StudentServices.GetStudentsByGroupId(
         _selectedGroupId!,
       );
-
-      // Загружаем посещаемость
       final rawRecords =
           await LessonsAttendanceService.getWeeklyGroupAttendance(
             groupId: _selectedGroupId!,
@@ -133,7 +231,6 @@ class _TeacherWeeklyReportScreenState
             endDate: sunday,
           );
 
-      // Генерируем PDF
       final reportData = WeeklyReportDataPreparer.prepareReportData(
         groupName: groupName,
         monday: monday,
@@ -156,150 +253,26 @@ class _TeacherWeeklyReportScreenState
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final teacher = ref.watch(teacherProvider);
+  // Методы форматирования
+  DateTime _getMonday(DateTime date) =>
+      DateTime(date.year, date.month, date.day - (date.weekday - 1));
+  DateTime _getSunday(DateTime date) =>
+      _getMonday(date).add(const Duration(days: 6));
+  String _formatDate(DateTime date) => '${date.day}.${date.month}.${date.year}';
+  String _formatFilenameDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-    if (teacher == null) {
-      return _buildAccessDenied();
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: double.infinity,
-          height: constraints.maxHeight,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+  Widget _buildAccessDenied(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Text(
+          'Доступ запрещён',
+          style: TextStyle(
+            fontSize: 18,
+            color: Theme.of(context).colorScheme.error,
           ),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
-            child: SafeArea(
-              child: Scaffold(
-                backgroundColor: Colors.transparent,
-                appBar: AppBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  title: const Text(
-                    'Ведомость по группе',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  centerTitle: true,
-                ),
-                body: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Выберите группу и дату недели',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Выбор группы
-                        if (_groups.isNotEmpty)
-                          DropdownButtonFormField<String>(
-                            value: _selectedGroupId,
-                            items:
-                                _groups.map((group) {
-                                  return DropdownMenuItem(
-                                    value: group.id,
-                                    child: Text(
-                                      group.name,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedGroupId = value;
-                              });
-                            },
-                            dropdownColor: const Color(0xFF4A148C),
-                            decoration: InputDecoration(
-                              hintText: 'Выберите группу',
-                              hintStyle: const TextStyle(color: Colors.white60),
-                              filled: true,
-                              fillColor: Colors.white.withOpacity(0.14),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.arrow_drop_down,
-                              color: Colors.white,
-                            ),
-                          )
-                        else
-                          const CircularProgressIndicator(color: Colors.white),
-
-                        const SizedBox(height: 24),
-
-                        // Кнопка генерации
-                        ElevatedButton.icon(
-                          onPressed:
-                              () => _selectWeekAndGenerate(context, teacher),
-                          icon: const Icon(
-                            Icons.picture_as_pdf,
-                            color: Colors.white,
-                          ),
-                          label: const Text('Создать ведомость'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple.shade700,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildAccessDenied() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: double.infinity,
-          height: constraints.maxHeight,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
-            child: SafeArea(
-              child: Center(
-                child: Text(
-                  'Доступ запрещён',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

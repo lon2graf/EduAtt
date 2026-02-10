@@ -1,4 +1,4 @@
-import 'package:edu_att/models/attendance_status.dart'; // 1. Импорт Enum
+import 'package:edu_att/models/attendance_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
@@ -11,20 +11,22 @@ class SubjectAbsencesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final allAttendances = ref.watch(attendanceProvider);
 
-    // 2. Исправленная фильтрация с использованием Enum
+    // Фильтрация
     final subjectAbsences =
         allAttendances
             .where(
               (attendance) =>
                   attendance.subjectName == subjectName &&
-                  // Больше никаких строк! Сравниваем напрямую с Enum.
                   attendance.status == AttendanceStatus.absent,
             )
             .toList();
 
-    // Сортируем по дате (от новых к старым)
+    // Сортировка
     subjectAbsences.sort(
       (a, b) => (b.lessonDate ?? DateTime(2000)).compareTo(
         a.lessonDate ?? DateTime(2000),
@@ -32,158 +34,93 @@ class SubjectAbsencesScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+      appBar: AppBar(
+        title: Text(subjectName),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        child: Container(
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // AppBar
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF4A148C), Color(0xFF6A1B9A)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 8.0,
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back_ios_new,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              subjectName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 48), // Для симметрии
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Статистика
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildStatItem(
-                          'Всего пропусков',
-                          '${subjectAbsences.length}',
-                        ),
-                        _buildStatItem(
-                          'За месяц',
-                          '${_getThisMonthAbsences(subjectAbsences)}',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Список пропусков
-                Expanded(
-                  child:
-                      subjectAbsences.isEmpty
-                          ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.celebration_outlined,
-                                  size: 56,
-                                  color: Colors.white60,
-                                ),
-                                SizedBox(height: 14),
-                                Text(
-                                  'Пропусков по этому предмету нет!',
-                                  style: TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 16,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          )
-                          : ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            itemCount: subjectAbsences.length,
-                            separatorBuilder:
-                                (context, index) => const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final absence = subjectAbsences[index];
-                              return _buildAbsenceCard(absence);
-                            },
-                          ),
-                ),
-              ],
-            ),
+      ),
+      body: Column(
+        children: [
+          // Блок статистики
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _buildStatsCard(context, subjectAbsences),
           ),
-        ),
+
+          // Список пропусков
+          Expanded(
+            child:
+                subjectAbsences.isEmpty
+                    ? _buildEmptyState(context)
+                    : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                      itemCount: subjectAbsences.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        return _buildAbsenceCard(
+                          context,
+                          subjectAbsences[index],
+                        );
+                      },
+                    ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatItem(String title, String value) {
+  Widget _buildStatsCard(
+    BuildContext context,
+    List<LessonAttendanceModel> absences,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(context, 'Всего', '${absences.length}'),
+          Container(
+            width: 1,
+            height: 40,
+            color: colorScheme.primary.withOpacity(0.2),
+          ),
+          _buildStatItem(
+            context,
+            'За месяц',
+            '${_getThisMonthAbsences(absences)}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(BuildContext context, String title, String value) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         Text(
           title,
-          style: const TextStyle(color: Colors.white60, fontSize: 14),
+          style: TextStyle(
+            color: colorScheme.onSurfaceVariant,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
+          style: TextStyle(
+            color: colorScheme.primary,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -191,13 +128,50 @@ class SubjectAbsencesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAbsenceCard(LessonAttendanceModel absence) {
+  Widget _buildEmptyState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.celebration_outlined,
+            size: 64,
+            color: colorScheme.primary.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Пропусков по этому предмету нет!',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbsenceCard(
+    BuildContext context,
+    LessonAttendanceModel absence,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.red.withOpacity(0.2), width: 0.8),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,44 +179,71 @@ class SubjectAbsencesScreen extends ConsumerWidget {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.red,
+                  color: Colors.red.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.event_busy_rounded,
-                  color: Colors.white,
-                  size: 18,
+                  color: Colors.red,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   _formatDate(absence.lessonDate),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Время: ${absence.lessonStart ?? '??'} - ${absence.lessonEnd ?? '??'}',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
-          ),
-          if (absence.teacherName != null || absence.teacherSurname != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Преподаватель: ${absence.teacherName ?? ''} ${absence.teacherSurname ?? ''}',
-                style: const TextStyle(color: Colors.white60, fontSize: 14),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.access_time,
+                size: 14,
+                color: colorScheme.onSurfaceVariant,
               ),
+              const SizedBox(width: 6),
+              Text(
+                '${absence.lessonStart ?? '??'} - ${absence.lessonEnd ?? '??'}',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          if (absence.teacherName != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${absence.teacherName} ${absence.teacherSurname ?? ''}',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
+          ],
         ],
       ),
     );
@@ -250,30 +251,20 @@ class SubjectAbsencesScreen extends ConsumerWidget {
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Дата не указана';
-
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final absenceDay = DateTime(date.year, date.month, date.day);
 
-    if (absenceDay == today) {
-      return 'Сегодня';
-    } else if (absenceDay == today.subtract(const Duration(days: 1))) {
-      return 'Вчера';
-    } else {
-      return '${date.day}.${date.month}.${date.year}';
-    }
+    if (absenceDay == today) return 'Сегодня';
+    if (absenceDay == today.subtract(const Duration(days: 1))) return 'Вчера';
+    return '${date.day}.${date.month}.${date.year}';
   }
 
   int _getThisMonthAbsences(List<LessonAttendanceModel> absences) {
     final now = DateTime.now();
-    final currentMonth = DateTime(now.year, now.month);
-    final nextMonth = DateTime(now.year, now.month + 1);
-
     return absences.where((absence) {
-      final absenceDate = absence.lessonDate;
-      return absenceDate != null &&
-          absenceDate.isAfter(currentMonth.subtract(const Duration(days: 1))) &&
-          absenceDate.isBefore(nextMonth);
+      final date = absence.lessonDate;
+      return date != null && date.year == now.year && date.month == now.month;
     }).length;
   }
 }

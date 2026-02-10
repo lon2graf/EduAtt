@@ -9,10 +9,9 @@ import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/models/lesson_model.dart';
-import 'package:edu_att/models/lesson_attendance_status.dart'; // Enum
-import 'package:edu_att/services/lesson_service.dart'; // Service
+import 'package:edu_att/models/lesson_attendance_status.dart';
+import 'package:edu_att/services/lesson_service.dart';
 
-// 1. Делаем Stateful, чтобы загружать данные при входе
 class TeacherHomeContentScreen extends ConsumerStatefulWidget {
   const TeacherHomeContentScreen({super.key});
 
@@ -42,62 +41,56 @@ class _TeacherHomeContentScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final teacher = ref.watch(teacherProvider);
     final lesson = ref.watch(currentLessonProvider);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: double.infinity,
-          height: constraints.maxHeight,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
-            child: SafeArea(
-              child: RefreshIndicator(
-                onRefresh: _loadInitialData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Привет, ${teacher?.name ?? 'Преподаватель'}! 👋',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSectionTitle('Текущее занятие'),
-                      const SizedBox(height: 10),
-                      _buildCurrentLessonCard(lesson),
-                    ],
-                  ),
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _loadInitialData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Привет, ${teacher?.name ?? 'Преподаватель'}! 👋',
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
+              const SizedBox(height: 24),
+              _buildSectionTitle(context, 'Текущее занятие'),
+              const SizedBox(height: 12),
+              _buildCurrentLessonCard(context, lesson),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildCurrentLessonCard(LessonModel? lesson) {
+  Widget _buildCurrentLessonCard(BuildContext context, LessonModel? lesson) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (lesson == null || lesson.id == null) {
       return _buildCard(
-        child: const Center(
-          child: Text(
-            'Сегодня занятий нет',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+        context,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: Text(
+              'Сегодня занятий нет',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 16,
+              ),
+            ),
           ),
         ),
       );
@@ -107,74 +100,89 @@ class _TeacherHomeContentScreenState
     String formattedEndTime = _formatTime(lesson.endTime);
 
     return _buildCard(
+      context,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             lesson.subjectName ?? 'Предмет',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$formattedStartTime - $formattedEndTime',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Группа: ${lesson.groupId}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.access_time, size: 16, color: colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                '$formattedStartTime - $formattedEndTime',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                Icons.group_outlined,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Группа: ${lesson.groupId}',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
 
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                context.go('/lesson_chat');
-              },
-              icon: const Icon(Icons.chat_bubble_outline, size: 16),
-              label: const Text('Чат урока', style: TextStyle(fontSize: 14)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.1),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.go('/lesson_chat'),
+              icon: const Icon(Icons.chat_bubble_outline, size: 18),
+              label: const Text('Чат урока'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // 2. Умная кнопка действия
-          _buildTeacherAction(lesson),
+          const SizedBox(height: 12),
+          _buildTeacherAction(context, lesson),
         ],
       ),
     );
   }
 
-  Widget _buildTeacherAction(LessonModel lesson) {
+  Widget _buildTeacherAction(BuildContext context, LessonModel lesson) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     String btnText = 'Начать перекличку';
-    Color btnColor = Colors.purple.shade700;
+    Color btnColor = colorScheme.primary;
     IconData btnIcon = Icons.edit_square;
-    bool isDangerAction = false; // Флаг для перехвата
+    bool isDangerAction = false;
 
     switch (lesson.status) {
       case LessonAttendanceStatus.free:
         btnText = 'Начать перекличку';
         break;
       case LessonAttendanceStatus.onHeadmanEditing:
-        btnText = 'Перехватить у старосты'; // Опасное действие
+        btnText = 'Перехватить у старосты';
         btnColor = Colors.orange.shade800;
         btnIcon = Icons.warning_amber_rounded;
         isDangerAction = true;
@@ -186,10 +194,11 @@ class _TeacherHomeContentScreenState
         break;
       case LessonAttendanceStatus.onTeacherEditing:
         btnText = 'Продолжить заполнение';
+        btnColor = colorScheme.primary;
         break;
       case LessonAttendanceStatus.confirmed:
         btnText = 'Изменить (Подтверждено)';
-        btnColor = Colors.grey.withOpacity(0.4);
+        btnColor = colorScheme.onSurfaceVariant.withOpacity(0.6);
         btnIcon = Icons.lock_open;
         break;
     }
@@ -198,10 +207,8 @@ class _TeacherHomeContentScreenState
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () async {
-          // 1. Проверяем свежий статус перед действием
           final freshStatus = await LessonService.getFreshStatus(lesson.id!);
 
-          // Если мы думали что Free, а там уже кто-то сидит -> Обновляем и выходим
           if (freshStatus != lesson.status) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -214,7 +221,6 @@ class _TeacherHomeContentScreenState
             return;
           }
 
-          // 2. Если это перехват (староста сидит) -> Показываем диалог
           if (isDangerAction) {
             final confirm = await showDialog<bool>(
               context: context,
@@ -222,7 +228,7 @@ class _TeacherHomeContentScreenState
                   (ctx) => AlertDialog(
                     title: const Text('Перехватить управление?'),
                     content: const Text(
-                      'Ведомость сейчас заполняет староста. Если вы продолжите, его несохраненные данные будут потеряны, и заполнение начнется заново.',
+                      'Ведомость сейчас заполняет староста. Данные будут сброшены.',
                     ),
                     actions: [
                       TextButton(
@@ -232,18 +238,19 @@ class _TeacherHomeContentScreenState
                       ElevatedButton(
                         onPressed: () => Navigator.pop(ctx, true),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: colorScheme.error,
                         ),
-                        child: const Text('Перехватить'),
+                        child: const Text(
+                          'Перехватить',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
             );
-
-            if (confirm != true) return; // Если нажал отмену
+            if (confirm != true) return;
           }
 
-          // 3. Выполняем переход
           _enterEditMode(lesson);
         },
         icon: Icon(btnIcon, size: 18),
@@ -251,11 +258,11 @@ class _TeacherHomeContentScreenState
         style: ElevatedButton.styleFrom(
           backgroundColor: btnColor,
           foregroundColor: Colors.white,
-          elevation: 4,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
     );
@@ -263,18 +270,14 @@ class _TeacherHomeContentScreenState
 
   Future<void> _enterEditMode(LessonModel lesson) async {
     try {
-      // 1. Обновляем статус в БД (Занимаем урок)
       await LessonService.updateLessonStatus(
         lesson.id!,
         LessonAttendanceStatus.onTeacherEditing,
       );
-
-      // 2. Обновляем локально
       ref
           .read(currentLessonProvider.notifier)
           .updateStatus(LessonAttendanceStatus.onTeacherEditing);
 
-      // 3. Грузим студентов и переходим
       if (lesson.groupId.isNotEmpty) {
         await ref
             .read(groupStudentsProvider.notifier)
@@ -286,35 +289,40 @@ class _TeacherHomeContentScreenState
     }
   }
 
-  // ... (методы _formatTime, _buildCard, _buildSectionTitle) ...
   String _formatTime(String? timeString) {
     if (timeString == null || timeString.isEmpty) return '--:--';
     List<String> parts = timeString.split(':');
-    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
-    return timeString;
+    return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : timeString;
   }
 
-  Widget _buildCard({required Widget child, double? height}) {
+  Widget _buildCard(BuildContext context, {required Widget child}) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      height: height,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.8),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: child,
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 20,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.bold,
       ),
     );
   }

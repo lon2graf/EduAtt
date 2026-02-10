@@ -1,82 +1,33 @@
-import 'package:edu_att/screens/lesson_chat_screen.dart';
-import 'package:edu_att/screens/student/lesson_attendance_mark_screen.dart';
-import 'package:edu_att/screens/teacher/login_teacher_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:edu_att/supabase/supabase_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:edu_att/screens/menu_screen.dart';
-import 'package:edu_att/screens/student/login_student_screen.dart';
-import 'package:edu_att/screens/student/home_screen.dart';
-import 'package:edu_att/screens/teacher/home_screen.dart';
-import 'package:edu_att/screens/teacher/teacher_attendance_mark_screen.dart';
+import 'package:edu_att/supabase/supabase_config.dart';
+
 import 'package:edu_att/services/shared_preferences_service.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
-import 'package:edu_att/screens/student/subject_absences_screen.dart';
+import 'package:edu_att/theme/theme_provider.dart';
+import 'package:edu_att/theme/app_theme.dart';
+
+// Импортируем наш файл с роутером
+import 'package:edu_att/router/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     await dotenv.load(fileName: ".env");
-    print(dotenv.env['SUPABASE_URL']);
-    print(dotenv.env['SUPABASE_ANON_KEY']);
     await SupabaseConfig.init();
   } catch (e, stackTrace) {
     print('Ошибка при инициализации: $e');
     print(stackTrace);
   }
 
-  final GoRouter appRouter = GoRouter(
-    routes: [
-      GoRoute(path: '/', builder: (context, state) => const MainMenuScreen()),
-      GoRoute(
-        path: '/login_student',
-        builder: (context, state) => const StudentLoginScreen(),
-      ),
-      GoRoute(
-        path: '/login_teacher',
-        builder: (context, state) => const TeacherLoginScreen(),
-      ),
-      GoRoute(
-        path: '/student/home',
-        builder: (context, state) => const StudentHomeScreen(),
-      ),
-      GoRoute(
-        path: '/teacher/home',
-        builder: (context, state) => const TeacherHomeScreen(),
-      ),
-      GoRoute(
-        path: '/student/mark',
-        builder: (context, state) => const AttendanceMarkScreen(),
-      ),
-      GoRoute(
-        path: '/teacher/mark',
-        builder: (context, state) => const TeacherAttendanceMarkScreen(),
-      ),
-      GoRoute(
-        path: '/student/subject_absences',
-        builder: (context, state) {
-          final subjectName = state.uri.queryParameters['subject'] ?? 'Предмет';
-          return SubjectAbsencesScreen(subjectName: subjectName);
-        },
-      ),
-      GoRoute(
-        path: '/lesson_chat',
-        builder: (context, state) => const LessonChatScreen(),
-      ),
-    ],
-  );
-
-  runApp(ProviderScope(child: EduAttApp(router: appRouter)));
+  runApp(const ProviderScope(child: EduAttApp()));
 }
 
 class EduAttApp extends ConsumerStatefulWidget {
-  final GoRouter router;
-
-  const EduAttApp({super.key, required this.router});
+  const EduAttApp({super.key});
 
   @override
   ConsumerState<EduAttApp> createState() => _EduAttAppState();
@@ -103,11 +54,13 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
       loginSuccess = await _tryAutoLoginTeacher();
     }
 
-    setState(() {
-      _isCheckingSession = false;
-      _shouldRedirectToHome = loginSuccess;
-      _userType = userType ?? '';
-    });
+    if (mounted) {
+      setState(() {
+        _isCheckingSession = false;
+        _shouldRedirectToHome = loginSuccess;
+        _userType = userType ?? '';
+      });
+    }
   }
 
   Future<bool> _tryAutoLoginStudent() async {
@@ -136,7 +89,6 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
             institutionId: credentials['institutionId']!,
           );
 
-      // Проверяем успешность входа
       final teacher = ref.read(teacherProvider);
       return teacher != null;
     }
@@ -145,52 +97,48 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Если нужно сделать редирект - делаем его
+    final appThemeType = ref.watch(themeProvider);
+
+    // Логика редиректа
     if (_shouldRedirectToHome) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Используем глобальную переменную appRouter
         if (_userType == 'student') {
-          widget.router.go('/student/home');
+          appRouter.go('/student/home');
         } else if (_userType == 'teacher') {
-          widget.router.go('/teacher/home');
+          appRouter.go('/teacher/home');
         }
-        // Сбрасываем флаг после редиректа
         setState(() {
           _shouldRedirectToHome = false;
         });
       });
     }
 
-    // Пока проверяем сессию, показываем загрузку
     if (_isCheckingSession) {
       return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: appThemeType.themeMode,
         home: Scaffold(
-          backgroundColor: Colors.deepPurple,
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 20),
-                Text(
-                  'Проверка сессии...',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
-            ),
+          backgroundColor: AppTheme.primaryColor,
+          body: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
           ),
         ),
       );
     }
 
-    // После проверки показываем основное приложение
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'EduAtt',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      routerConfig: widget.router,
+
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: appThemeType.themeMode,
+
+      // Подключаем глобальный роутер
+      routerConfig: appRouter,
     );
   }
 }

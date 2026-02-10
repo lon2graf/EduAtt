@@ -21,14 +21,16 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final students = ref.watch(groupStudentsProvider);
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
     final lesson = ref.watch(currentLessonProvider);
 
-    // Инициализация данных, если список пуст
+    // Инициализация данных
     if (students.isNotEmpty && attendanceList.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Передаем lesson (может быть null, но провайдер это обработает)
         ref
             .read(lessonAttendanceMarkProvider.notifier)
             .initializeAttendance(students, lesson);
@@ -37,347 +39,159 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
 
     // Экран загрузки
     if (students.isEmpty || attendanceList.isEmpty) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: colorScheme.primary),
         ),
       );
     }
 
     final currentStudent = students[currentStudentIndex];
-
-    // Безопасное получение статуса для текущего студента
     final currentAttendance = attendanceList.firstWhere(
       (item) => item.studentId == currentStudent.id,
-      orElse: () => attendanceList.first, // Заглушка
+      orElse: () => attendanceList.first,
     );
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: [0.0, 0.5, 1.0],
-          ),
+      appBar: AppBar(
+        title: const Text("Отметка посещаемости"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => context.go('/student/home'),
         ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // --- AppBar ---
+            // --- Карточка студента ---
             Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4A148C), Color(0xFF6A1B9A)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withOpacity(0.5),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 8.0,
+              child: Column(
+                children: [
+                  Text(
+                    currentStudent.name,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        onPressed: () => context.go('/student/home'),
-                      ),
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            "Отметка посещаемости",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                    ],
+                  const SizedBox(height: 8),
+                  Text(
+                    currentStudent.surname,
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // --- Текущий статус ---
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceVariant.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                "Статус: ${currentAttendance.status?.label ?? 'не отмечен'}",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
 
-            // --- Основной контент ---
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
+            const SizedBox(height: 40),
+
+            // --- Кнопки выбора ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _statusButton(
+                  context,
+                  AttendanceStatus.present,
+                  currentStudent.id!,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(18.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // --- Карточка студента ---
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              currentStudent.name,
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              currentStudent.surname,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
+                _statusButton(
+                  context,
+                  AttendanceStatus.absent,
+                  currentStudent.id!,
+                ),
+                _statusButton(
+                  context,
+                  AttendanceStatus.late,
+                  currentStudent.id!,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 60),
+
+            // --- Навигация и Сохранение ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Назад
+                currentStudentIndex > 0
+                    ? IconButton(
+                      onPressed: () => setState(() => currentStudentIndex--),
+                      icon: Icon(
+                        Icons.chevron_left,
+                        size: 40,
+                        color: colorScheme.primary,
                       ),
+                    )
+                    : const SizedBox(width: 48),
 
-                      const SizedBox(height: 24),
-
-                      // --- Текущий статус (Текст) ---
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          "Текущий статус: ${currentAttendance.status?.label ?? 'не отмечен'}",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.white60,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 36),
-
-                      // --- Кнопки для отметки (Используем Enum!) ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _statusButton(
-                            AttendanceStatus.present,
-                            currentStudent.id!,
-                          ),
-                          _statusButton(
-                            AttendanceStatus.absent,
-                            currentStudent.id!,
-                          ),
-                          _statusButton(
-                            AttendanceStatus.late,
-                            currentStudent.id!,
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 36),
-
-                      // --- Навигация и Сохранение ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Кнопка "Назад" (по студентам)
-                          if (currentStudentIndex > 0)
-                            IconButton(
-                              onPressed:
-                                  () => setState(() => currentStudentIndex--),
-                              icon: const Icon(
-                                Icons.chevron_left,
-                                size: 36,
-                                color: Colors.white,
-                              ),
-                              padding: const EdgeInsets.all(8.0),
-                              constraints: const BoxConstraints(
-                                minWidth: 48,
-                                minHeight: 48,
-                              ),
-                            )
-                          else
-                            const SizedBox(width: 48),
-
-                          // Счетчик
-                          Text(
-                            "${currentStudentIndex + 1} / ${students.length}",
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-
-                          // Кнопка "Вперед" или "Сохранить"
-                          if (currentStudentIndex < students.length - 1)
-                            IconButton(
-                              onPressed:
-                                  () => setState(() => currentStudentIndex++),
-                              icon: const Icon(
-                                Icons.chevron_right,
-                                size: 36,
-                                color: Colors.white,
-                              ),
-                              padding: const EdgeInsets.all(8.0),
-                              constraints: const BoxConstraints(
-                                minWidth: 48,
-                                minHeight: 48,
-                              ),
-                            )
-                          else
-                            // === КНОПКА СОХРАНЕНИЯ С ПРОВЕРКОЙ ===
-                            SizedBox(
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  if (lesson == null || lesson.id == null)
-                                    return;
-
-                                  // 1. Check: Проверяем, не перехватил ли препод управление
-                                  // Делаем легкий запрос к базе
-                                  final freshStatus =
-                                      await LessonService.getFreshStatus(
-                                        lesson.id!,
-                                      );
-
-                                  // Если статус уже не "Староста редактирует"
-                                  if (freshStatus !=
-                                      LessonAttendanceStatus.onHeadmanEditing) {
-                                    if (context.mounted) {
-                                      // Показываем ошибку
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Ошибка! Управление перехвачено преподавателем.',
-                                          ),
-                                          backgroundColor: Colors.red,
-                                          duration: Duration(seconds: 3),
-                                        ),
-                                      );
-                                      // Обновляем статус локально (чтобы сбросить UI) и уходим
-                                      ref
-                                          .read(currentLessonProvider.notifier)
-                                          .loadCurrentLesson(lesson.groupId);
-                                      context.go('/student/home');
-                                    }
-                                    return; // ПРЕРЫВАЕМ СОХРАНЕНИЕ
-                                  }
-
-                                  try {
-                                    // 2. Save: Сохраняем данные посещаемости
-                                    await ref
-                                        .read(
-                                          lessonAttendanceMarkProvider.notifier,
-                                        )
-                                        .saveAttendance();
-
-                                    // 3. Update Status: Меняем статус на "Ждет подтверждения"
-                                    await LessonService.updateLessonStatus(
-                                      lesson.id!,
-                                      LessonAttendanceStatus.waitConfirmation,
-                                    );
-
-                                    // Обновляем локально, чтобы кнопка на главной стала синей
-                                    ref
-                                        .read(currentLessonProvider.notifier)
-                                        .updateStatus(
-                                          LessonAttendanceStatus
-                                              .waitConfirmation,
-                                        );
-
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Отправлено на проверку!',
-                                          ),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                      context.go('/student/home');
-                                    }
-                                  } catch (e) {
-                                    print("Ошибка сохранения: $e");
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Ошибка при сохранении: $e',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.purple.shade700,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Сохранить",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
+                // Счетчик
+                Text(
+                  "${currentStudentIndex + 1} / ${students.length}",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+
+                // Вперед или Сохранить
+                if (currentStudentIndex < students.length - 1)
+                  IconButton(
+                    onPressed: () => setState(() => currentStudentIndex++),
+                    icon: Icon(
+                      Icons.chevron_right,
+                      size: 40,
+                      color: colorScheme.primary,
+                    ),
+                  )
+                else
+                  _buildSaveButton(context, lesson),
+              ],
             ),
           ],
         ),
@@ -385,10 +199,81 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     );
   }
 
-  Widget _statusButton(AttendanceStatus status, String studentId) {
+  Widget _buildSaveButton(BuildContext context, var lesson) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ElevatedButton(
+      onPressed: () async {
+        if (lesson == null || lesson.id == null) return;
+
+        final freshStatus = await LessonService.getFreshStatus(lesson.id!);
+        if (freshStatus != LessonAttendanceStatus.onHeadmanEditing) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ошибка! Управление перехвачено преподавателем.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            ref
+                .read(currentLessonProvider.notifier)
+                .loadCurrentLesson(lesson.groupId);
+            context.go('/student/home');
+          }
+          return;
+        }
+
+        try {
+          await ref
+              .read(lessonAttendanceMarkProvider.notifier)
+              .saveAttendance();
+          await LessonService.updateLessonStatus(
+            lesson.id!,
+            LessonAttendanceStatus.waitConfirmation,
+          );
+          ref
+              .read(currentLessonProvider.notifier)
+              .updateStatus(LessonAttendanceStatus.waitConfirmation);
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Отправлено на проверку!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.go('/student/home');
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+          }
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
+      ),
+      child: const Text(
+        "Сохранить",
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _statusButton(
+    BuildContext context,
+    AttendanceStatus status,
+    String studentId,
+  ) {
     return SizedBox(
-      width: 80,
-      height: 80,
+      width: 85,
+      height: 85,
       child: ElevatedButton(
         onPressed: () {
           ref
@@ -396,19 +281,18 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
               .setAttendanceStatus(studentId, status);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: status.color.withOpacity(0.9), // Цвет из Enum
+          backgroundColor: status.color,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 4,
-          shadowColor: Colors.black.withOpacity(0.15),
           padding: const EdgeInsets.all(8),
         ),
         child: Text(
-          status.label, // Текст из Enum
+          status.label,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
         ),
       ),
     );

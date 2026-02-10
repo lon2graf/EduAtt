@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/models/student_model.dart';
+import 'package:edu_att/theme/theme_provider.dart'; // Провайдер темы
+import 'package:edu_att/theme/app_theme_type.dart'; // Enum темы
 import 'package:go_router/go_router.dart';
 
 class ProfileContentScreen extends ConsumerWidget {
@@ -9,90 +11,110 @@ class ProfileContentScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final StudentModel? student = ref.watch(currentStudentProvider);
 
-    // Используем LayoutBuilder, чтобы растянуть градиент на всё пространство
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: double.infinity,
-          height: constraints.maxHeight, // Растягиваем на всю высоту
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF4A148C), // Глубокий фиолетовый
-                Color(0xFF6A1B9A), // Темно-фиолетовый
-                Color(0xFF7B1FA2), // Ярче посередине
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: [0.0, 0.5, 1.0],
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-            ), // Вуаль
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // --- Шапка профиля ---
-                  _buildProfileHeader(student),
-                  const SizedBox(height: 20), // Уменьшен отступ
-                  // --- Информация о студенте ---
-                  Expanded(child: _buildProfileInfo(student)),
-                  // --- Кнопка выхода ---
-                  _buildLogoutButton(ref, context),
-                  const SizedBox(height: 14), // Уменьшен отступ
-                ],
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            children: [
+              // --- Шапка профиля ---
+              _buildProfileHeader(context, student),
+
+              const SizedBox(height: 24),
+
+              // --- Блок информации ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle(context, 'Личные данные'),
+                    const SizedBox(height: 12),
+                    _buildInfoCard(
+                      context,
+                      'Email',
+                      student?.email ?? 'Не указан',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoCard(
+                      context,
+                      'Логин',
+                      student?.login ?? 'Не указан',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoCard(
+                      context,
+                      'Роль',
+                      student?.isHeadman == true ? 'Староста' : 'Студент',
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // --- Блок настроек (ТЕМЫ) ---
+                    _buildSectionTitle(context, 'Настройки'),
+                    const SizedBox(height: 12),
+                    _buildThemeSwitcher(context, ref),
+                  ],
+                ),
               ),
-            ),
+
+              const SizedBox(height: 40),
+
+              // --- Кнопка выхода ---
+              _buildLogoutButton(context, ref),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildProfileHeader(StudentModel? student) {
+  Widget _buildProfileHeader(BuildContext context, StudentModel? student) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.all(20.0), // Уменьшены отступы
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
         children: [
           Container(
-            width: 64, // Уменьшена иконка
-            height: 64, // Уменьшена иконка
+            width: 70,
+            height: 70,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18), // Светлее фон иконки
-              borderRadius: BorderRadius.circular(32), // Круглая иконка
+              color: colorScheme.primaryContainer,
+              shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(0.25),
-                width: 0.8,
-              ), // Светлее обводка
+                color: colorScheme.primary.withOpacity(0.2),
+                width: 2,
+              ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.person_rounded,
-              color: Colors.white,
-              size: 32, // Уменьшена иконка
+              color: colorScheme.onPrimaryContainer,
+              size: 36,
             ),
           ),
-          const SizedBox(width: 14), // Уменьшен отступ
+          const SizedBox(width: 18),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  student?.name ?? 'Имя',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24, // Уменьшен шрифт
+                  '${student?.name ?? 'Имя'} ${student?.surname ?? 'Фамилия'}',
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  student?.surname ?? 'Фамилия',
-                  style: const TextStyle(
-                    color: Colors.white60, // Светлее
-                    fontSize: 18, // Уменьшен шрифт
+                  student?.groupName ?? 'Группа не указана',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 16,
                   ),
                 ),
               ],
@@ -103,67 +125,117 @@ class ProfileContentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfileInfo(StudentModel? student) {
-    if (student == null) {
-      return const Center(
-        child: Text(
-          'Данные студента недоступны',
-          style: TextStyle(
-            color: Colors.white60,
-            fontSize: 16,
-          ), // Светлее, меньше шрифт
-        ),
-      );
-    }
+  Widget _buildThemeSwitcher(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final currentTheme = ref.watch(themeProvider);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-      ), // Уменьшены отступы
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoCard('Email', student.email ?? 'Не указан'),
-            const SizedBox(height: 14), // Уменьшен отступ
-            _buildInfoCard('Логин', student.login ?? 'Не указан'),
-            const SizedBox(height: 14), // Уменьшен отступ
-            _buildInfoCard('Староста', student.isHeadman ? 'Да' : 'Нет'),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          _buildThemeOption(
+            context,
+            ref,
+            title: 'Светлая',
+            icon: Icons.wb_sunny_outlined,
+            type: AppThemeType.light,
+            isSelected: currentTheme == AppThemeType.light,
+          ),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+          _buildThemeOption(
+            context,
+            ref,
+            title: 'Темная',
+            icon: Icons.nightlight_round_outlined,
+            type: AppThemeType.dark,
+            isSelected: currentTheme == AppThemeType.dark,
+          ),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+          _buildThemeOption(
+            context,
+            ref,
+            title: 'Как в системе',
+            icon: Icons.settings_brightness_outlined,
+            type: AppThemeType.system,
+            isSelected: currentTheme == AppThemeType.system,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoCard(String title, String value) {
+  Widget _buildThemeOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required IconData icon,
+    required AppThemeType type,
+    required bool isSelected,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      onTap: () => ref.read(themeProvider.notifier).setTheme(type),
+      leading: Icon(
+        icon,
+        color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      trailing:
+          isSelected
+              ? Icon(Icons.check_circle, color: colorScheme.primary, size: 20)
+              : null,
+    );
+  }
+
+  Widget _buildInfoCard(BuildContext context, String title, String value) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14), // Уменьшены отступы
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14), // Светлее фон
-        borderRadius: BorderRadius.circular(12), // Уменьшено скругление
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 0.8,
-        ), // Светлее обводка
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white60, // Светлее
-              fontSize: 13, // Уменьшен шрифт
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 2), // Уменьшен отступ
+          const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16, // Уменьшен шрифт
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -172,34 +244,46 @@ class ProfileContentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLogoutButton(WidgetRef ref, BuildContext context) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-      ), // Уменьшены отступы
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: SizedBox(
         width: double.infinity,
-        height: 46, // Уменьшена высота
-        child: ElevatedButton(
+        height: 54,
+        child: TextButton.icon(
           onPressed: () {
             ref.read(currentStudentProvider.notifier).logout();
             context.go('/');
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red.shade700, // Фиолетовый стиль для кнопки
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Уменьшено скругление
-            ),
-            elevation: 4, // Уменьшена тень
-            shadowColor: Colors.black.withOpacity(0.1),
-          ),
-          child: const Text(
-            'Выйти',
+          icon: const Icon(Icons.logout_rounded, color: Colors.red),
+          label: const Text(
+            'Выйти из аккаунта',
             style: TextStyle(
+              color: Colors.red,
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ), // Уменьшен шрифт
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.red.withOpacity(0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
       ),

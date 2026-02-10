@@ -24,159 +24,138 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     final institutionsAsync = ref.watch(institutionsProvider);
 
-    return Stack(
-      children: [
-        Scaffold(
-          body: Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF4A148C),
-                  Color(0xFF6A1B9A),
-                  Color(0xFF7B1FA2),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
-              child: SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(22),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Вход студента',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.25),
-                                blurRadius: 5,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-
-                        // -----------------------------
-                        // DROPDOWN INSTITUTIONS
-                        // -----------------------------
-                        institutionsAsync.when(
-                          data:
-                              (institutions) =>
-                                  _buildInstitutionDropdown(institutions),
-                          loading: () => const SizedBox(),
-                          error:
-                              (_, __) => const Text(
-                                "Ошибка загрузки организаций",
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                        ),
-
-                        const SizedBox(height: 18),
-
-                        _buildTextField(
-                          controller: emailController,
-                          hintText: 'Email',
-                        ),
-                        const SizedBox(height: 18),
-
-                        _buildTextField(
-                          controller: passwordController,
-                          hintText: 'Пароль',
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 36),
-
-                        _buildLoginButton(context, ref),
-                        const SizedBox(height: 18),
-
-                        InkWell(
-                          onTap: () => context.go('/'),
-                          child: const Padding(
-                            padding: EdgeInsets.all(4.0),
-                            child: Text(
-                              'Назад в главное меню',
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 15,
-                                decoration: TextDecoration.underline,
-                                decorationColor: Colors.white30,
-                                decorationThickness: 1.2,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // --------------------------------------------------------------------
-                        //      СЕКРЕТНАЯ НЕВИДИМАЯ КНОПКА АВТОЗАПОЛНЕНИЯ (для тестов)
-                        // --------------------------------------------------------------------
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedInstitutionId =
-                                  '761584a9-07a1-4e5f-9549-7911ab5bc1b5';
-                            });
-                            emailController.text = 'ivanova_v@mpcit.ru';
-                            passwordController.text = 'myhash_s3';
-                          },
-                          child: Opacity(
-                            opacity: 0.0,
-                            child: Container(
-                              width: 140,
-                              height: 60,
-                              color: Colors.transparent,
-                            ),
-                          ),
-                        ),
-                      ],
+    return Scaffold(
+      // backgroundColor теперь берется автоматически из темы
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Вход студента',
+                      style: TextStyle(
+                        // Фиолетовый в светлой теме, белый в темной
+                        color: isDark ? Colors.white : colorScheme.primary,
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 40),
+
+                    // -----------------------------
+                    // DROPDOWN INSTITUTIONS
+                    // -----------------------------
+                    institutionsAsync.when(
+                      data:
+                          (institutions) =>
+                              _buildInstitutionDropdown(context, institutions),
+                      loading: () => const SizedBox(height: 54),
+                      error:
+                          (_, __) => Text(
+                            "Ошибка загрузки организаций",
+                            style: TextStyle(color: colorScheme.error),
+                          ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    _buildTextField(
+                      context,
+                      controller: emailController,
+                      hintText: 'Email',
+                    ),
+                    const SizedBox(height: 18),
+
+                    _buildTextField(
+                      context,
+                      controller: passwordController,
+                      hintText: 'Пароль',
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 36),
+
+                    _buildLoginButton(context, ref),
+                    const SizedBox(height: 24),
+
+                    InkWell(
+                      onTap: () => context.go('/'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          'Назад в главное меню',
+                          style: TextStyle(
+                            color:
+                                isDark ? Colors.white60 : colorScheme.primary,
+                            fontSize: 15,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Секретная кнопка (теперь полностью прозрачная и не мешает)
+                    // В самом низу Column
+                    GestureDetector(
+                      onTap: () {
+                        setState(
+                          () =>
+                              selectedInstitutionId =
+                                  '761584a9-07a1-4e5f-9549-7911ab5bc1b5',
+                        );
+                        emailController.text =
+                            'ivanova_v@mpcit.ru'; // или ivanova_v для студентов
+                        passwordController.text = 'myhash_s3';
+                      },
+                      // Используем Container с прозрачным цветом, чтобы нажатия гарантированно проходили
+                      child: Container(
+                        height: 50,
+                        width: double.infinity,
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ),
 
-        // ---------------------------------------
-        // FULLSCREEN LOADING OVERLAY
-        // ---------------------------------------
-        if (institutionsAsync.isLoading)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.black.withOpacity(0.45),
-            child: const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+          // FULLSCREEN LOADING OVERLAY
+          if (institutionsAsync.isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
-  // ------------------------------------------------
-  // WIDGET: Institution Dropdown
-  // ------------------------------------------------
-  Widget _buildInstitutionDropdown(List<InstitutionModel> institutions) {
+  Widget _buildInstitutionDropdown(
+    BuildContext context,
+    List<InstitutionModel> institutions,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return DropdownButtonHideUnderline(
       child: DropdownButton2<String>(
         isExpanded: true,
-        hint: const Text(
+        hint: Text(
           'Выберите организацию',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: theme.hintColor),
         ),
         value: selectedInstitutionId,
         items:
@@ -186,64 +165,59 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                     value: inst.id!,
                     child: Text(
                       inst.name,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: colorScheme.onSurface),
                     ),
                   ),
                 )
                 .toList(),
-        onChanged:
-            (value) => setState(() {
-              selectedInstitutionId = value;
-            }),
-
-        // button style
+        onChanged: (value) => setState(() => selectedInstitutionId = value),
         buttonStyleData: ButtonStyleData(
           height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.14),
+            color: colorScheme.surfaceVariant.withOpacity(0.4),
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
           ),
         ),
-
-        // dropdown style
         dropdownStyleData: DropdownStyleData(
-          elevation: 2,
-          maxHeight: 320,
           decoration: BoxDecoration(
-            color: const Color(0xFF4A148C),
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
-          offset: const Offset(0, 0),
         ),
-
-        iconStyleData: const IconStyleData(
-          icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+        iconStyleData: IconStyleData(
+          icon: Icon(Icons.arrow_drop_down, color: colorScheme.primary),
         ),
       ),
     );
   }
 
-  // ------------------------------------------------
-  // TEXTFIELD BUILDER
-  // ------------------------------------------------
-  Widget _buildTextField({
+  Widget _buildTextField(
+    BuildContext context, {
     required TextEditingController controller,
     required String hintText,
     bool obscureText = false,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return TextField(
       controller: controller,
       obscureText: obscureText,
-      style: const TextStyle(color: Colors.white, fontSize: 16),
+      style: TextStyle(color: colorScheme.onSurface),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white60),
+        hintStyle: TextStyle(color: theme.hintColor),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.14),
+        fillColor: colorScheme.surfaceVariant.withOpacity(0.4),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
@@ -253,10 +227,9 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
     );
   }
 
-  // ------------------------------------------------
-  // LOGIN BUTTON
-  // ------------------------------------------------
   Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       width: 260,
       height: 56,
@@ -269,42 +242,38 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
             return;
           }
 
-          final notifier = ref.read(currentStudentProvider.notifier);
-
-          final success = await notifier.login(
-            selectedInstitutionId!,
-            emailController.text.trim(),
-            passwordController.text.trim(),
-          );
+          final success = await ref
+              .read(currentStudentProvider.notifier)
+              .login(
+                selectedInstitutionId!,
+                emailController.text.trim(),
+                passwordController.text.trim(),
+              );
 
           if (success && mounted) {
             final student = ref.read(currentStudentProvider);
-
             if (student != null) {
               await ref
                   .read(attendanceProvider.notifier)
                   .loadStudentAttendances(student.id!);
-
               await ref
                   .read(currentLessonProvider.notifier)
                   .loadCurrentLesson(student.groupId);
-
               context.go('/student/home');
             }
-          } else {
+          } else if (mounted) {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(const SnackBar(content: Text("Ошибка входа")));
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.purple.shade700,
-          foregroundColor: Colors.white,
-          elevation: 6,
-          shadowColor: Colors.black.withOpacity(0.2),
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 2,
         ),
         child: const Text(
           'Войти',

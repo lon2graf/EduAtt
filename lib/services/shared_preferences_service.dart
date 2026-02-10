@@ -8,6 +8,7 @@ class SharedPreferencesService {
   static const String _teacherLoginKey = 'teacher_login';
   static const String _teacherPasswordKey = 'teacher_password';
   static const String _teacherInstitutionKey = 'teacher_institution';
+  static const String _themeKey = 'app_theme_mode';
 
   static Future<SharedPreferences> get _instance async =>
       await SharedPreferences.getInstance();
@@ -68,6 +69,17 @@ class SharedPreferencesService {
       };
     }
     return null;
+  }
+
+  static Future<void> saveTheme(String themeValue) async {
+    final prefs = await _instance;
+    await prefs.setString(_themeKey, themeValue);
+  }
+
+  /// Получение сохраненной темы
+  static Future<String?> getTheme() async {
+    final prefs = await _instance;
+    return prefs.getString(_themeKey);
   }
 
   // === ОБЩИЕ МЕТОДЫ ===

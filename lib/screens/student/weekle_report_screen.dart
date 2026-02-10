@@ -1,129 +1,124 @@
-// lib/screens/student/weekly_report_screen.dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/student_provider.dart';
-import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:edu_att/services/student_service.dart';
-import 'package:edu_att/utils/weekly_report_data_preparer.dart';
 import 'package:edu_att/utils/pdf_generator.dart';
+import 'package:edu_att/utils/weekly_report_data_preparer.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
-import 'package:edu_att/models/student_model.dart';
 import 'dart:typed_data';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io' show Platform;
 
 class WeeklyReportScreen extends ConsumerWidget {
   const WeeklyReportScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final student = ref.watch(currentStudentProvider);
 
+    // 1. Проверка прав доступа (если не староста)
     if (student == null || !student.isHeadman) {
       return Scaffold(
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return Container(
-              width: double.infinity,
-              height: constraints.maxHeight,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF4A148C),
-                    Color(0xFF6A1B9A),
-                    Color(0xFF7B1FA2),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.lock_person_outlined,
+                  size: 80,
+                  color: colorScheme.primary.withOpacity(0.5),
                 ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
-                ),
-                child: SafeArea(
-                  child: Center(
-                    child: Text(
-                      'Доступно только старосте',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
+                const SizedBox(height: 24),
+                Text(
+                  'Доступ ограничен',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
                   ),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 8),
+                Text(
+                  'Формирование ведомостей доступно только старосте группы.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: double.infinity,
-          height: constraints.maxHeight,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF4A148C), Color(0xFF6A1B9A), Color(0xFF7B1FA2)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06)),
-            child: SafeArea(
-              child: Scaffold(
-                backgroundColor: Colors.transparent,
-                appBar: AppBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  title: const Text(
-                    'Создание ведомости',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  centerTitle: true,
+    // 2. Основной интерфейс для старосты
+    return Scaffold(
+      appBar: AppBar(title: const Text('Создание ведомости')),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Красивая иконка-иллюстрация
+              Container(
+                padding: const EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withOpacity(0.3),
+                  shape: BoxShape.circle,
                 ),
-                body: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Выберите любую дату недели,\nчтобы сформировать ведомость',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
-                        const SizedBox(height: 32),
-                        ElevatedButton.icon(
-                          onPressed:
-                              () =>
-                                  _selectWeekAndGenerate(context, ref, student),
-                          icon: const Icon(
-                            Icons.calendar_today,
-                            color: Colors.white,
-                          ),
-                          label: const Text('Выбрать дату'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple.shade700,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
+                child: Icon(
+                  Icons.picture_as_pdf_outlined,
+                  size: 64,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Выберите любую дату недели,\nчтобы сформировать PDF-ведомость',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      () => _selectWeekAndGenerate(context, ref, student),
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: const Text(
+                    'Выбрать неделю',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 0,
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+
+  // --- Вспомогательные методы (логика без изменений, только форматирование) ---
 
   DateTime _getMonday(DateTime date) {
     return DateTime(date.year, date.month, date.day - (date.weekday - 1));
@@ -147,6 +142,8 @@ class WeeklyReportScreen extends ConsumerWidget {
     WidgetRef ref,
     StudentModel student,
   ) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final selectedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -164,7 +161,7 @@ class WeeklyReportScreen extends ConsumerWidget {
       builder:
           (ctx) => AlertDialog(
             title: const Text('Создать ведомость?'),
-            content: Text('За неделю:\n$period'),
+            content: Text('Период: $period'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -172,14 +169,27 @@ class WeeklyReportScreen extends ConsumerWidget {
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                ),
                 child: const Text('Создать'),
               ),
             ],
           ),
     );
+
     if (confirm != true) return;
 
     try {
+      // Показываем индикатор загрузки (Snackbar или Dialog)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Генерация PDF...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
       final allStudents = await StudentServices.GetStudentsByGroupId(
         student.groupId,
       );
@@ -204,9 +214,11 @@ class WeeklyReportScreen extends ConsumerWidget {
         filename: 'vedomost_${_formatFilenameDate(monday)}.pdf',
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      }
     }
   }
 }

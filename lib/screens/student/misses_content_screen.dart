@@ -1,4 +1,4 @@
-import 'package:edu_att/models/attendance_status.dart'; // Не забудь импортировать Enum!
+import 'package:edu_att/models/attendance_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
@@ -7,7 +7,6 @@ import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 
-// Вкладка "Посещаемость"
 class MissesContentScreen extends ConsumerStatefulWidget {
   const MissesContentScreen({super.key});
 
@@ -21,21 +20,13 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
 
   void _goToPreviousDay() {
     setState(() {
-      _selectedDate = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day - 1,
-      );
+      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
     });
   }
 
   void _goToNextDay() {
     setState(() {
-      _selectedDate = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day + 1,
-      );
+      _selectedDate = _selectedDate.add(const Duration(days: 1));
     });
   }
 
@@ -55,6 +46,9 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final List<LessonAttendanceModel> allAttendances = ref.watch(
       attendanceProvider,
     );
@@ -66,65 +60,46 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
           _selectedDate,
         );
 
-    // Используем LayoutBuilder, чтобы растянуть градиент на всё пространство
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: double.infinity,
-          height: constraints.maxHeight, // Растягиваем на всю высоту
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF4A148C), // Глубокий фиолетовый
-                Color(0xFF6A1B9A), // Темно-фиолетовый
-                Color(0xFF7B1FA2), // Ярче посередине
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: [0.0, 0.5, 1.0],
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-            ), // Вуаль
-            child: SafeArea(
-              child: Column(
-                children: [
-                  _buildDateNavigationHeader(),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: () async {
-                        if (student != null && student.id != null) {
-                          await ref
-                              .read(attendanceProvider.notifier)
-                              .loadStudentAttendances(student.id!);
-                        }
-                      },
-                      child: _buildAttendanceList(filteredRecords),
-                    ),
-                  ),
-                ],
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            _buildDateNavigationHeader(context),
+            const SizedBox(height: 16),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (student?.id != null) {
+                    await ref
+                        .read(attendanceProvider.notifier)
+                        .loadStudentAttendances(student!.id!);
+                  }
+                },
+                child: _buildAttendanceList(context, filteredRecords),
               ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildDateNavigationHeader() {
+  Widget _buildDateNavigationHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             onPressed: _goToPreviousDay,
-            icon: const Icon(Icons.chevron_left, size: 36, color: Colors.white),
-            padding: const EdgeInsets.all(6.0),
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            icon: Icon(
+              Icons.chevron_left,
+              size: 32,
+              color: colorScheme.primary,
+            ),
           ),
           Expanded(
             child: GestureDetector(
@@ -132,73 +107,73 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 10,
-                  horizontal: 14,
+                  horizontal: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 0.8,
-                  ),
+                  color: colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${_getWeekdayName(_selectedDate.weekday).toUpperCase()}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _getWeekdayName(_selectedDate.weekday).toUpperCase(),
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
                       ),
-                      Text(
-                        '${_selectedDate.day} ${_getMonthName(_selectedDate.month).toUpperCase()}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    Text(
+                      '${_selectedDate.day} ${_getMonthName(_selectedDate.month).toUpperCase()}',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
           IconButton(
             onPressed: _goToNextDay,
-            icon: const Icon(
+            icon: Icon(
               Icons.chevron_right,
-              size: 36,
-              color: Colors.white,
+              size: 32,
+              color: colorScheme.primary,
             ),
-            padding: const EdgeInsets.all(6.0),
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAttendanceList(List<LessonAttendanceModel> records) {
+  Widget _buildAttendanceList(
+    BuildContext context,
+    List<LessonAttendanceModel> records,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (records.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.calendar_today_outlined,
-              size: 56,
-              color: Colors.white60,
+              size: 64,
+              color: colorScheme.outline.withOpacity(0.5),
             ),
-            SizedBox(height: 14),
+            const SizedBox(height: 16),
             Text(
-              'Нет данных за эту дату',
-              style: TextStyle(color: Colors.white60, fontSize: 16),
-              textAlign: TextAlign.center,
+              'Занятий не найдено',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -206,53 +181,41 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       itemCount: records.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final record = records[index];
-        return _buildAttendanceCard(record);
-      },
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder:
+          (context, index) => _buildAttendanceCard(context, records[index]),
     );
   }
 
-  Widget _buildAttendanceCard(LessonAttendanceModel record) {
-    // 1. Парсим статус через наш Enum
-
+  Widget _buildAttendanceCard(
+    BuildContext context,
+    LessonAttendanceModel record,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
     final statusEnum = record.status;
+    final Color statusColor = statusEnum?.color ?? Colors.grey;
 
-    // 2. Получаем данные из Enum (или дефолтные, если null)
-    final Color statusColor = statusEnum?.color ?? Colors.orange;
-    final String statusText = statusEnum?.label ?? 'Не указано';
-
-    // 3. Выбираем иконку (можно тоже вынести в Enum, но пока так)
-    IconData statusIcon;
-    switch (statusEnum) {
-      case AttendanceStatus.present:
-        statusIcon = Icons.check_circle_rounded;
-        break;
-      case AttendanceStatus.absent:
-        statusIcon = Icons.event_busy_rounded;
-        break;
-      case AttendanceStatus.late:
-        statusIcon =
-            Icons.access_time_rounded; // Или другая иконка для опоздания
-        break;
-      default:
-        statusIcon = Icons.help_outline_rounded;
-    }
+    IconData statusIcon = Icons.help_outline_rounded;
+    if (statusEnum == AttendanceStatus.present)
+      statusIcon = Icons.check_circle_rounded;
+    if (statusEnum == AttendanceStatus.absent)
+      statusIcon = Icons.event_busy_rounded;
+    if (statusEnum == AttendanceStatus.late)
+      statusIcon = Icons.access_time_filled_rounded;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: statusColor.withOpacity(0.2), width: 0.8),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -262,70 +225,84 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: statusColor,
+                  color: statusColor.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(statusIcon, color: Colors.white, size: 18),
+                child: Icon(statusIcon, color: statusColor, size: 22),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: InkWell(
-                  onTap: () {
-                    // Переход на экран детализации только для предметов с пропусками
-                    // Используем Enum для проверки, что это именно отсутствие
-                    if (record.subjectName != null) {
-                      context.push(
-                        '/student/subject_absences?subject=${Uri.encodeComponent(record.subjectName!)}',
-                      );
-                    }
-                  },
-                  child: Text(
-                    record.subjectName ?? 'Предмет не указан',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      decoration:
-                          // Подчеркиваем только если это пропуск (absent)
-                          (record.subjectName != null &&
-                                  statusEnum == AttendanceStatus.absent)
-                              ? TextDecoration.underline
-                              : TextDecoration.none,
-                      decorationColor: Colors.white.withOpacity(0.6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        if (record.subjectName != null) {
+                          context.push(
+                            '/student/subject_absences?subject=${Uri.encodeComponent(record.subjectName!)}',
+                          );
+                        }
+                      },
+                      child: Text(
+                        record.subjectName ?? 'Предмет не указан',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          decoration:
+                              statusEnum == AttendanceStatus.absent
+                                  ? TextDecoration.underline
+                                  : null,
+                        ),
+                      ),
                     ),
-                  ),
+                    Text(
+                      '${record.lessonStart ?? '??'} - ${record.lessonEnd ?? '??'}',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${record.lessonStart ?? '??'} - ${record.lessonEnd ?? '??'}',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Преподаватель: ${record.teacherName ?? ''} ${record.teacherSurname ?? ''}',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              statusText,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Преподаватель: ${record.teacherName ?? ''} ${record.teacherSurname ?? ''}',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusEnum?.label ?? 'Не отмечено',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -333,27 +310,33 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   }
 
   String _getWeekdayName(int weekday) {
-    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    if (weekday >= 1 && weekday <= 7) return days[weekday - 1];
-    return '';
+    const days = [
+      'Понедельник',
+      'Вторник',
+      'Среда',
+      'Четверг',
+      'Пятница',
+      'Суббота',
+      'Воскресенье',
+    ];
+    return (weekday >= 1 && weekday <= 7) ? days[weekday - 1] : '';
   }
 
   String _getMonthName(int month) {
     const months = [
-      'Янв',
-      'Фев',
-      'Мар',
-      'Апр',
-      'Май',
-      'Июн',
-      'Июл',
-      'Авг',
-      'Сен',
-      'Окт',
-      'Ноя',
-      'Дек',
+      'Января',
+      'Февраля',
+      'Марта',
+      'Апреля',
+      'Мая',
+      'Июня',
+      'Июля',
+      'Августа',
+      'Сентября',
+      'Октября',
+      'Ноября',
+      'Декабря',
     ];
-    if (month >= 1 && month <= 12) return months[month - 1];
-    return '';
+    return (month >= 1 && month <= 12) ? months[month - 1] : '';
   }
 }
