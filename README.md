@@ -5,6 +5,17 @@
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/State-Riverpod-90caf9?style=for-the-badge&logo=flutter)
 
+<p align="center">
+  <img src="assets/frosya_mascot/eduatt_фрося.svg" width="600" alt="Frosya logo">
+</p>
+
+<p align="center">
+  <img src="assets/frosya_mascot/greeting/greeting.svg" width="200" alt="Frosya Greeting">
+</p>
+
+
+<h1 align="center">EduAtt (Educational Attendance)</h1>
+<p align="center">Система учета посещаемости с характером кошки Фроси 🐱</p>
 **EduAtt** — это современное мобильное приложение для цифрового учета посещаемости в учебных заведениях. Забудьте о бумажных журналах: теперь всё управление ведомостями находится в вашем смартфоне.
 
 ---
