@@ -11,6 +11,8 @@ import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/services/lesson_service.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class TeacherHomeContentScreen extends ConsumerStatefulWidget {
   const TeacherHomeContentScreen({super.key});
@@ -79,19 +81,35 @@ class _TeacherHomeContentScreenState
     final colorScheme = Theme.of(context).colorScheme;
 
     if (lesson == null || lesson.id == null) {
-      return _buildCard(
-        context,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Center(
-            child: Text(
-              'Сегодня занятий нет',
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 40), // Отступ от приветствия
+            // Наша Фрося в режиме сна/отдыха
+            const EduMascot(state: MascotState.empty, height: 220),
+
+            const SizedBox(height: 24),
+
+            Text(
+              'Сейчас занятия нет!',
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Можно выпить чашечку кофе и отдохнуть!☕☕',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontSize: 16,
               ),
             ),
-          ),
+            const SizedBox(height: 40),
+          ],
         ),
       );
     }

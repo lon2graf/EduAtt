@@ -82,6 +82,16 @@ flutter:
   - assets/icons/applogo.png
   - assets/fonts/Roboto-Regular.ttf
   - assets/fonts/Roboto-Bold.ttf
+  - assets/frosya_mascot/greeting/
+  - assets/frosya_mascot/idle/
+  - assets/frosya_mascot/empty/
+  - assets/frosya_mascot/waiting/
+  - assets/frosya_mascot/searching/
+  - assets/frosya_mascot/updating/
+  - assets/frosya_mascot/success/
+  - assets/frosya_mascot/error/
+  - assets/frosya_mascot/forbidden/
+
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

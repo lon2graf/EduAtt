@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
-
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/institution_provider.dart';
 import 'package:edu_att/models/insituiton_model.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 
 class TeacherLoginScreen extends ConsumerStatefulWidget {
   const TeacherLoginScreen({super.key});
@@ -257,11 +257,14 @@ class _TeacherLoginScreenState extends ConsumerState<TeacherLoginScreen> {
             await ref
                 .read(currentLessonProvider.notifier)
                 .loadCurrentLessonForTeacher(teacher.id!);
+            EduSnackBar.showGreeting(context, ref, teacher.name);
             context.go('/teacher/home');
           } else if (mounted) {
-            ScaffoldMessenger.of(
+            EduSnackBar.showError(
               context,
-            ).showSnackBar(const SnackBar(content: Text("Ошибка входа")));
+              ref,
+              'Доступ запрещен. Проверьте данные.',
+            );
           }
         },
         style: ElevatedButton.styleFrom(

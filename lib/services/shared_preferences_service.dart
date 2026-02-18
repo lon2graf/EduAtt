@@ -9,6 +9,7 @@ class SharedPreferencesService {
   static const String _teacherPasswordKey = 'teacher_password';
   static const String _teacherInstitutionKey = 'teacher_institution';
   static const String _themeKey = 'app_theme_mode';
+  static const String _mascotEnabledKey = 'mascot_enabled';
 
   static Future<SharedPreferences> get _instance async =>
       await SharedPreferences.getInstance();
@@ -107,5 +108,16 @@ class SharedPreferencesService {
       return await getTeacherCredentials() != null;
     }
     return false;
+  }
+
+  static Future<void> setMascotEnabled(bool enabled) async {
+    final prefs = await _instance;
+    await prefs.setBool(_mascotEnabledKey, enabled);
+  }
+
+  // Чтение настройки (по умолчанию true)
+  static Future<bool> getMascotEnabled() async {
+    final prefs = await _instance;
+    return prefs.getBool(_mascotEnabledKey) ?? true;
   }
 }

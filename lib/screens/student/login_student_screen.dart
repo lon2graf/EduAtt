@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
-
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/institution_provider.dart';
 import 'package:edu_att/models/insituiton_model.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 
 class StudentLoginScreen extends ConsumerStatefulWidget {
   const StudentLoginScreen({super.key});
@@ -259,12 +259,13 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
               await ref
                   .read(currentLessonProvider.notifier)
                   .loadCurrentLesson(student.groupId);
+
+              EduSnackBar.showGreeting(context, ref, student.name);
+
               context.go('/student/home');
             }
           } else if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text("Ошибка входа")));
+            EduSnackBar.showError(context, ref, 'Неверный логин или пароль');
           }
         },
         style: ElevatedButton.styleFrom(

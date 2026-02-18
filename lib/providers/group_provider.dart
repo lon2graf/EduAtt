@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/services/student_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
