@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:edu_att/services/lessons_attendace_service.dart';
-import 'package:edu_att/providers/lesson_attendance_provider.dart';
-import 'package:edu_att/models/lesson_attendance_model.dart';
-import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
@@ -13,6 +9,8 @@ import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/services/lesson_service.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
+import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 
 class TeacherHomeContentScreen extends ConsumerStatefulWidget {
   const TeacherHomeContentScreen({super.key});
@@ -288,22 +286,38 @@ class _TeacherHomeContentScreenState
 
   Future<void> _enterEditMode(LessonModel lesson) async {
     try {
+      // 1. Обновляем статус в БД (Занимаем урок)
       await LessonService.updateLessonStatus(
         lesson.id!,
         LessonAttendanceStatus.onTeacherEditing,
       );
+
+      // 2. Обновляем локально текущий урок
       ref
           .read(currentLessonProvider.notifier)
           .updateStatus(LessonAttendanceStatus.onTeacherEditing);
 
+      // 3. Грузим список студентов
       if (lesson.groupId.isNotEmpty) {
         await ref
             .read(groupStudentsProvider.notifier)
             .loadGroupStudents(lesson.groupId);
+
+        // --- ВОТ ТУТ ГЛАВНОЕ ИЗМЕНЕНИЕ ---
+        // Сразу после загрузки студентов готовим ведомость (подтягиваем отметки старосты)
+        final students = ref.read(groupStudentsProvider);
+        final updatedLesson = ref.read(currentLessonProvider);
+
+        await ref
+            .read(lessonAttendanceMarkProvider.notifier)
+            .initializeAttendance(students, updatedLesson);
+        // ---------------------------------
+
         if (mounted) context.go('/teacher/mark');
       }
     } catch (e) {
       print("Ошибка при входе: $e");
+      EduSnackBar.showError(context, ref, "Не удалось подготовить ведомость");
     }
   }
 

@@ -12,7 +12,7 @@ class LessonAttendanceMarkNotifier
   LessonAttendanceMarkNotifier() : super([]);
 
   /// Инициализация массива для текущего урока и студентов группы
-  void initializeAttendance(
+  Future<void> initializeAttendance(
     List<StudentModel> groupStudents,
     LessonModel? currentLesson,
   ) async {

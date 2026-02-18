@@ -30,13 +30,8 @@ class _TeacherAttendanceMarkScreenState
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
     final lesson = ref.watch(currentLessonProvider);
 
-    // Инициализация данных
-    if (students.isNotEmpty && attendanceList.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref
-            .read(lessonAttendanceMarkProvider.notifier)
-            .initializeAttendance(students, lesson);
-      });
+    if (students.isEmpty || attendanceList.isEmpty) {
+      return _loadingScreen(context);
     }
 
     if (students.isEmpty || attendanceList.isEmpty) {
