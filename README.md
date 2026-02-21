@@ -6,7 +6,7 @@
 ![Riverpod](https://img.shields.io/badge/State-Riverpod-90caf9?style=for-the-badge&logo=flutter)
 
 <p align="center">
-  <img src="assets/frosya_mascot/eduatt_фрося.svg" width="600" alt="Frosya logo">
+  <img src="assets/frosya_mascot/eduatt.svg" width="600" alt="Frosya logo">
 </p>
 
 <p align="center">
