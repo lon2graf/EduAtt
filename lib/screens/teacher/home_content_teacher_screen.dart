@@ -47,6 +47,16 @@ class _TeacherHomeContentScreenState
     final teacher = ref.watch(teacherProvider);
     final lesson = ref.watch(currentLessonProvider);
 
+    ref.listen(currentLessonProvider, (previous, next) {
+      if (next?.status == LessonAttendanceStatus.waitConfirmation) {
+        EduSnackBar.showInfo(
+          context,
+          ref,
+          "Староста отправил ведомость на проверку!",
+        );
+      }
+    });
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadInitialData,
@@ -303,8 +313,6 @@ class _TeacherHomeContentScreenState
             .read(groupStudentsProvider.notifier)
             .loadGroupStudents(lesson.groupId);
 
-        // --- ВОТ ТУТ ГЛАВНОЕ ИЗМЕНЕНИЕ ---
-        // Сразу после загрузки студентов готовим ведомость (подтягиваем отметки старосты)
         final students = ref.read(groupStudentsProvider);
         final updatedLesson = ref.read(currentLessonProvider);
 

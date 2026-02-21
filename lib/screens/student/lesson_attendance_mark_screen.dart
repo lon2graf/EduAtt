@@ -7,6 +7,8 @@ import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class AttendanceMarkScreen extends ConsumerStatefulWidget {
   const AttendanceMarkScreen({super.key});
@@ -35,6 +37,43 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
             .read(lessonAttendanceMarkProvider.notifier)
             .initializeAttendance(students, lesson);
       });
+    }
+
+    if (lesson?.status == LessonAttendanceStatus.onTeacherEditing) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Наша Фрося в режиме запрета
+                const EduMascot(state: MascotState.forbidden, height: 200),
+                const SizedBox(height: 24),
+                Text(
+                  'Доступ ограничен',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Преподаватель перехватил управление ведомостью. Ваши правки больше не принимаются.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => context.go('/student/home'),
+                  child: const Text('Вернуться на главную'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     // Экран загрузки

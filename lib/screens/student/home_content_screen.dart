@@ -13,6 +13,8 @@ import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/services/lesson_service.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class HomeContentScreen extends ConsumerStatefulWidget {
   const HomeContentScreen({super.key});
@@ -57,6 +59,13 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       allAttendances,
       now,
     );
+
+    ref.listen(currentLessonProvider, (previous, next) {
+      if (previous?.status != next?.status &&
+          next?.status == LessonAttendanceStatus.onTeacherEditing) {
+        EduSnackBar.showForbidden(context, ref);
+      }
+    });
 
     return Scaffold(
       // backgroundColor подтянется автоматически
