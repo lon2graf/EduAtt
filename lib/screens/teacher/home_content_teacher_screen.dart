@@ -88,35 +88,14 @@ class _TeacherHomeContentScreenState
   Widget _buildCurrentLessonCard(BuildContext context, LessonModel? lesson) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (lesson == null || lesson.id == null) {
+    if (lesson == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 40), // Отступ от приветствия
-            // Наша Фрося в режиме сна/отдыха
-            const EduMascot(state: MascotState.empty, height: 220),
-
-            const SizedBox(height: 24),
-
-            Text(
-              'Сейчас занятия нет!',
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Можно выпить чашечку кофе и отдохнуть!☕☕',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 40),
+            const EduMascot(state: MascotState.empty, height: 200),
+            const SizedBox(height: 16),
+            Text('Сейчас занятий нет'),
           ],
         ),
       );

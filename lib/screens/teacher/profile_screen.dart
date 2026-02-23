@@ -5,6 +5,10 @@ import 'package:edu_att/models/teacher_model.dart';
 import 'package:edu_att/theme/theme_provider.dart'; // Провайдер темы
 import 'package:edu_att/theme/app_theme_type.dart'; // Enum темы
 import 'package:go_router/go_router.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/providers/frosya_provider.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 
 class TeacherProfileContentScreen extends ConsumerWidget {
   const TeacherProfileContentScreen({super.key});
@@ -58,6 +62,10 @@ class TeacherProfileContentScreen extends ConsumerWidget {
                     _buildSectionTitle(context, 'Настройки'),
                     const SizedBox(height: 12),
                     _buildThemeSwitcher(context, ref),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Настройки интерфейса'),
+                    const SizedBox(height: 12),
+                    _buildMascotSettings(context, ref),
                   ],
                 ),
               ),
@@ -68,6 +76,62 @@ class TeacherProfileContentScreen extends ConsumerWidget {
               _buildLogoutButton(context, ref),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMascotSettings(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    // Слушаем наш провайдер маскота
+    final isMascotEnabled = ref.watch(mascotProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      child: ListTile(
+        // Явно задаем размер контейнера для иконки
+        leading: SizedBox(
+          width: 40,
+          height: 40,
+          child:
+              isMascotEnabled
+                  ? EduMascot(
+                    state: MascotState.idle,
+                    height: 40,
+                  ) // Указываем высоту
+                  : Icon(
+                    Icons.pets_outlined,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+        ),
+        title: const Text(
+          'Помощник Фрося',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+
+        subtitle: Text(
+          isMascotEnabled ? 'Котик активно помогает' : 'Котик спит и не мешает',
+          style: const TextStyle(fontSize: 12),
+        ),
+
+        trailing: Switch(
+          value: isMascotEnabled,
+          onChanged: (value) {
+            // Вызываем метод переключения в провайдере
+            ref.read(mascotProvider.notifier).toggleMascot();
+
+            // Маленький бонус: уведомление о смене режима
+            if (value) {
+              EduSnackBar.showInfo(context, ref, 'Фрося проснулась!');
+            } else {
+              // Если маскот выключен, EduSnackBar сам покажет "сухой" текст без картинки
+              EduSnackBar.showInfo(context, ref, 'Режим минимализма включен');
+            }
+          },
         ),
       ),
     );

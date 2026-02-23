@@ -60,10 +60,18 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       now,
     );
 
-    ref.listen(currentLessonProvider, (previous, next) {
-      if (previous?.status != next?.status &&
-          next?.status == LessonAttendanceStatus.onTeacherEditing) {
-        EduSnackBar.showForbidden(context, ref);
+    ref.listen<LessonModel?>(currentLessonProvider, (previous, next) {
+      if (previous?.status != next?.status) {
+        if (next?.status == LessonAttendanceStatus.onTeacherEditing) {
+          // Вызываем нашу умную Фросю через EduSnackBar
+          EduSnackBar.showForbidden(context, ref);
+        } else if (next?.status == LessonAttendanceStatus.confirmed) {
+          EduSnackBar.showSuccess(
+            context,
+            ref,
+            'Ведомость утверждена и закрыта',
+          );
+        }
       }
     });
 
@@ -144,26 +152,18 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (lesson == null) {
-      return Column(
-        children: [
-          const SizedBox(height: 40),
-          // Используем наш умный виджет!
-          const EduMascot(state: MascotState.empty, height: 180),
-          const SizedBox(height: 16),
-          Text(
-            'Сегодня занятий нет.\nМожно отдохнуть!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 40),
-        ],
+      return Center(
+        // Добавляем Center здесь, в родителя
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const EduMascot(state: MascotState.empty, height: 200),
+            const SizedBox(height: 16),
+            Text('Сейчас занятий нет'),
+          ],
+        ),
       );
     }
-
     return _buildCard(
       context,
       child: Column(

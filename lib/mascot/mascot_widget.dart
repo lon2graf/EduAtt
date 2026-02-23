@@ -27,15 +27,12 @@ class EduMascot extends ConsumerWidget {
     }
 
     // 3. Если включен — центрируем и рисуем
-    return Center(
-      // Добавили центрирование
-      child: SvgPicture.asset(
-        MascotManager.getSvgPath(state),
-        height: height,
-        width: width,
-        fit: BoxFit.contain,
-        placeholderBuilder: (context) => const SizedBox.shrink(),
-      ),
+    return SvgPicture.asset(
+      MascotManager.getSvgPath(state),
+      height: height,
+      width: width,
+      fit: BoxFit.contain,
+      placeholderBuilder: (context) => const SizedBox.shrink(),
     );
   }
 }
