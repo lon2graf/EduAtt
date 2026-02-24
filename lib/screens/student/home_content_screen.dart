@@ -6,15 +6,12 @@ import 'package:edu_att/services/lessons_attendace_service.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/student_model.dart';
-import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/services/lesson_service.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
-import 'package:edu_att/mascot/mascot_manager.dart';
 
 class HomeContentScreen extends ConsumerStatefulWidget {
   const HomeContentScreen({super.key});
@@ -53,6 +50,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     final List<LessonAttendanceModel> allAttendances = ref.watch(
       attendanceProvider,
     );
+    final lesson = ref.watch(currentLessonProvider);
 
     final DateTime now = DateTime.now();
     final int absencesCount = LessonsAttendanceService.countAbsencesForMonth(
@@ -60,23 +58,18 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       now,
     );
 
+    // Слушатель для Realtime изменений статуса
     ref.listen<LessonModel?>(currentLessonProvider, (previous, next) {
       if (previous?.status != next?.status) {
         if (next?.status == LessonAttendanceStatus.onTeacherEditing) {
-          // Вызываем нашу умную Фросю через EduSnackBar
           EduSnackBar.showForbidden(context, ref);
         } else if (next?.status == LessonAttendanceStatus.confirmed) {
-          EduSnackBar.showSuccess(
-            context,
-            ref,
-            'Ведомость утверждена и закрыта',
-          );
+          EduSnackBar.showSuccess(context, ref, 'Ведомость утверждена');
         }
       }
     });
 
     return Scaffold(
-      // backgroundColor подтянется автоматически
       body: RefreshIndicator(
         onRefresh: _loadInitialData,
         child: SingleChildScrollView(
@@ -86,7 +79,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Привет, ${student?.name ?? 'Студент'}! 😊',
+                'Привет, ${student?.name ?? 'Студент'}! 👋',
                 style: TextStyle(
                   color: colorScheme.onSurface,
                   fontSize: 32,
@@ -95,51 +88,17 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Карточка статистики
-              _buildCard(
-                context,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Статистика за месяц',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            absencesCount.toString(),
-                            style: TextStyle(
-                              color: colorScheme.primary,
-                              fontSize: 42,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            _getAbsencesText(absencesCount),
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Блок статистики
+              _buildStatsCard(context, absencesCount),
 
               const SizedBox(height: 32),
               _buildSectionTitle(context, 'Текущее занятие'),
               const SizedBox(height: 12),
 
-              _buildCurrentLessonCard(context, student),
+              // ОЦЕНКА СОСТОЯНИЯ: Урок есть или нет
+              lesson != null
+                  ? _buildActiveLessonCard(context, lesson, student)
+                  : _buildNoLessonState(context),
             ],
           ),
         ),
@@ -147,23 +106,12 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     );
   }
 
-  Widget _buildCurrentLessonCard(BuildContext context, StudentModel? student) {
-    final lesson = ref.watch(currentLessonProvider);
-    final colorScheme = Theme.of(context).colorScheme;
-
-    if (lesson == null) {
-      return Center(
-        // Добавляем Center здесь, в родителя
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const EduMascot(state: MascotState.empty, height: 200),
-            const SizedBox(height: 16),
-            Text('Сейчас занятий нет'),
-          ],
-        ),
-      );
-    }
+  // --- 1. КАРТОЧКА АКТИВНОГО УРОКА ---
+  Widget _buildActiveLessonCard(
+    BuildContext context,
+    LessonModel lesson,
+    StudentModel? student,
+  ) {
     return _buildCard(
       context,
       child: Column(
@@ -171,7 +119,217 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         children: [
           _buildLessonInfo(context, lesson),
           const SizedBox(height: 20),
-          _buildActionButtons(context, lesson, student),
+          const Divider(height: 1, thickness: 0.5),
+          const SizedBox(height: 20),
+          _buildCardActions(context, lesson, student),
+        ],
+      ),
+    );
+  }
+
+  // --- 2. КНОПКИ ВНУТРИ КАРТОЧКИ ---
+  Widget _buildCardActions(
+    BuildContext context,
+    LessonModel lesson,
+    StudentModel? student,
+  ) {
+    if (student == null) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        // Кнопка ЧАТА (Вспомогательная)
+        Expanded(
+          flex: 2,
+          child: OutlinedButton.icon(
+            onPressed: () => context.go('/lesson_chat'),
+            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+            label: const Text("Чат"),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // Кнопка ДЕЙСТВИЯ (Основная)
+        Expanded(
+          flex: 3,
+          child:
+              student.isHeadman
+                  ? _buildHeadmanButton(context, lesson)
+                  : _buildSelfCheckInButton(context, lesson, student),
+        ),
+      ],
+    );
+  }
+
+  // Кнопка "Я ТУТ" для обычного студента
+  Widget _buildSelfCheckInButton(
+    BuildContext context,
+    LessonModel lesson,
+    StudentModel student,
+  ) {
+    return ElevatedButton.icon(
+      onPressed: () async {
+        try {
+          await LessonsAttendanceService.markSelfPresent(
+            lessonId: lesson.id!,
+            studentId: student.id!,
+          );
+          if (context.mounted) {
+            EduSnackBar.showSuccess(
+              context,
+              ref,
+              "Вы в списке! Хорошей пары 🐾",
+            );
+          }
+        } catch (e) {
+          if (context.mounted)
+            EduSnackBar.showError(context, ref, "Ошибка отметки");
+        }
+      },
+      icon: const Icon(Icons.check_circle, size: 20),
+      label: const Text("Я ТУТ", style: TextStyle(fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green.shade600,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  // Кнопка для Старосты (Переход к ведомости)
+  Widget _buildHeadmanButton(BuildContext context, LessonModel lesson) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Определяем состояния блокировки
+    final bool isLockedByTeacher =
+        lesson.status == LessonAttendanceStatus.onTeacherEditing;
+    final bool isWaiting =
+        lesson.status == LessonAttendanceStatus.waitConfirmation;
+    final bool isConfirmed = lesson.status == LessonAttendanceStatus.confirmed;
+    final bool isBlocked = isLockedByTeacher || isWaiting || isConfirmed;
+
+    // Выбираем текст кнопки в зависимости от статуса
+    String buttonText = "ВЕДОМОСТЬ";
+    IconData buttonIcon = Icons.edit_square;
+
+    if (isLockedByTeacher) {
+      buttonText = "ПРЕПОДАВАТЕЛЬ ЗАПОЛНЯЕТ";
+      buttonIcon = Icons.lock_person_outlined;
+    } else if (isWaiting) {
+      buttonText = "НА ПРОВЕРКЕ";
+      buttonIcon = Icons.hourglass_empty;
+    } else if (isConfirmed) {
+      buttonText = "УТВЕРЖДЕНО";
+      buttonIcon = Icons.verified_user_outlined;
+    }
+
+    return ElevatedButton.icon(
+      onPressed: () {
+        if (isLockedByTeacher) {
+          // Если заблокировано преподом — Фрося-охранник
+          EduSnackBar.showForbidden(context, ref);
+        } else if (isWaiting) {
+          EduSnackBar.showInfo(
+            context,
+            ref,
+            "Ведомость уже отправлена. Ждём ответа преподавателя.",
+          );
+        } else if (isConfirmed) {
+          EduSnackBar.showSuccess(
+            context,
+            ref,
+            "Эта ведомость уже закрыта. Всё отлично!",
+          );
+        } else {
+          // Если всё ок — идем на экран отметки
+          context.go('/student/mark');
+        }
+      },
+      icon: Icon(buttonIcon, size: 20),
+      label: Text(
+        buttonText,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+      style: ElevatedButton.styleFrom(
+        // Если заблокировано — делаем кнопку серой/тусклой
+        backgroundColor:
+            isBlocked
+                ? colorScheme.onSurface.withOpacity(0.12)
+                : colorScheme.primary,
+        foregroundColor:
+            isBlocked ? colorScheme.onSurface.withOpacity(0.38) : Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  // --- 3. ЗАГЛУШКА: НЕТ УРОКА ---
+  Widget _buildNoLessonState(BuildContext context) {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          const EduMascot(state: MascotState.empty, height: 200),
+          const SizedBox(height: 16),
+          Text(
+            'Пар пока нет, Фрося отдыхает...',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ (Инфо, Статистика) ---
+  Widget _buildStatsCard(BuildContext context, int count) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return _buildCard(
+      context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Статистика за месяц',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  count.toString(),
+                  style: TextStyle(
+                    color: colorScheme.primary,
+                    fontSize: 42,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  _getAbsencesText(count),
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -179,23 +337,15 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
 
   Widget _buildLessonInfo(BuildContext context, LessonModel lesson) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    String formattedStartTime = _formatTime(lesson.startTime);
-    String formattedEndTime = _formatTime(lesson.endTime);
     String teacherFullName =
         '${lesson.teacherName ?? ''} ${lesson.teacherSurname ?? ''}'.trim();
-    if (teacherFullName.isEmpty) teacherFullName = 'Не указан';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           lesson.subjectName ?? 'Предмет',
-          style: TextStyle(
-            color: colorScheme.onSurface,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Row(
@@ -203,7 +353,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             Icon(Icons.access_time, size: 16, color: colorScheme.primary),
             const SizedBox(width: 6),
             Text(
-              '$formattedStartTime - $formattedEndTime',
+              '${_formatTime(lesson.startTime)} - ${_formatTime(lesson.endTime)}',
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontSize: 14,
@@ -221,7 +371,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             ),
             const SizedBox(width: 6),
             Text(
-              'Преподаватель: $teacherFullName',
+              'Преподаватель: ${teacherFullName.isEmpty ? 'Не указан' : teacherFullName}',
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontSize: 14,
@@ -231,162 +381,6 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         ),
       ],
     );
-  }
-
-  Widget _buildActionButtons(
-    BuildContext context,
-    LessonModel lesson,
-    StudentModel? student,
-  ) {
-    bool isHeadman = student?.isHeadman == true;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => context.go('/lesson_chat'),
-            icon: const Icon(Icons.chat_bubble_outline, size: 18),
-            label: const Text('Чат урока'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        if (isHeadman && lesson.id != null) ...[
-          const SizedBox(height: 12),
-          _buildHeadmanAction(context, lesson),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildHeadmanAction(BuildContext context, LessonModel lesson) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    bool isLocked =
-        lesson.status == LessonAttendanceStatus.onTeacherEditing ||
-        lesson.status == LessonAttendanceStatus.confirmed ||
-        lesson.status == LessonAttendanceStatus.waitConfirmation;
-
-    if (isLocked) {
-      String statusText;
-      IconData statusIcon;
-
-      switch (lesson.status) {
-        case LessonAttendanceStatus.confirmed:
-          statusText = "Ведомость закрыта";
-          statusIcon = Icons.lock_outline;
-          break;
-        case LessonAttendanceStatus.waitConfirmation:
-          statusText = "На проверке";
-          statusIcon = Icons.hourglass_empty;
-          break;
-        default:
-          statusText = "Заполняет преподаватель";
-          statusIcon = Icons.edit_off_outlined;
-          break;
-      }
-
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceVariant,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(statusIcon, color: colorScheme.onSurfaceVariant, size: 18),
-            const SizedBox(width: 10),
-            Text(
-              statusText,
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    String labelText = 'Отметить посещаемость';
-    Color btnColor = colorScheme.primary;
-    if (lesson.status == LessonAttendanceStatus.onHeadmanEditing) {
-      labelText = 'Продолжить отмечать';
-      btnColor = Colors.orange.shade800;
-    }
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () async {
-          final freshStatus = await LessonService.getFreshStatus(lesson.id!);
-          if (freshStatus != LessonAttendanceStatus.free &&
-              freshStatus != LessonAttendanceStatus.onHeadmanEditing) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Статус изменился. Доступ закрыт.'),
-                ),
-              );
-              _loadInitialData();
-            }
-            return;
-          }
-
-          try {
-            if (lesson.status == LessonAttendanceStatus.free) {
-              await LessonService.updateLessonStatus(
-                lesson.id!,
-                LessonAttendanceStatus.onHeadmanEditing,
-              );
-              ref
-                  .read(currentLessonProvider.notifier)
-                  .updateStatus(LessonAttendanceStatus.onHeadmanEditing);
-            }
-            if (mounted) {
-              await ref
-                  .read(groupStudentsProvider.notifier)
-                  .loadGroupStudents(lesson.groupId);
-              context.go('/student/mark');
-            }
-          } catch (e) {
-            print("Ошибка при входе: $e");
-          }
-        },
-        icon: const Icon(Icons.edit_square, size: 18),
-        label: Text(labelText),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: btnColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-      ),
-    );
-  }
-
-  String _getAbsencesText(int count) {
-    if (count == 0) return 'пропусков';
-    if (count == 1) return 'пропуск';
-    if (count >= 2 && count <= 4) return 'пропуска';
-    return 'пропусков';
-  }
-
-  String _formatTime(String? timeString) {
-    if (timeString == null || timeString.isEmpty) return '--:--';
-    List<String> parts = timeString.split(':');
-    return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : timeString;
   }
 
   Widget _buildCard(BuildContext context, {required Widget child}) {
@@ -413,11 +407,20 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: TextStyle(
-        color: Theme.of(context).colorScheme.onSurface,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-      ),
+      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
     );
+  }
+
+  String _getAbsencesText(int count) {
+    if (count == 0) return 'пропусков';
+    if (count == 1) return 'пропуск';
+    if (count >= 2 && count <= 4) return 'пропуска';
+    return 'пропусков';
+  }
+
+  String _formatTime(String? timeString) {
+    if (timeString == null || timeString.isEmpty) return '--:--';
+    List<String> parts = timeString.split(':');
+    return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : timeString;
   }
 }

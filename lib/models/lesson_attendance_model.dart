@@ -104,4 +104,22 @@ class LessonAttendanceModel {
       'status': status?.toDbValue,
     };
   }
+
+  LessonAttendanceModel copyWith({String? id, AttendanceStatus? status}) {
+    return LessonAttendanceModel(
+      // Если передали новое значение — берем его, иначе оставляем старое
+      id: id ?? this.id,
+      status: status ?? this.status,
+      lessonId: this.lessonId,
+      studentId: this.studentId,
+      studentName: this.studentName,
+      lessonDate: this.lessonDate,
+      lessonStart: this.lessonStart,
+      lessonEnd: this.lessonEnd,
+      subjectName: this.subjectName,
+      teacherName: this.teacherName,
+      teacherSurname: this.teacherSurname,
+      groupId: this.groupId,
+    );
+  }
 }

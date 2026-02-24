@@ -22,6 +22,15 @@ class LessonsAttendanceService {
     }
   }
 
+  static Stream<List<Map<String, dynamic>>> getAttendanceStream(
+    String lessonId,
+  ) {
+    return Supabase.instance.client
+        .from('lesson_attendances')
+        .stream(primaryKey: ['id'])
+        .eq('lesson_id', lessonId);
+  }
+
   // Метод получения всех посещений студента по его ID
   static Future<List<LessonAttendanceModel>> GetAllStudentAttendaces(
     String id,
@@ -231,6 +240,25 @@ class LessonsAttendanceService {
     } catch (e) {
       print('Ошибка при загрузке отметок для урока $lessonId: $e');
       return []; // В случае ошибки возвращаем пустой список, чтобы приложение не упало
+    }
+  }
+
+  static Future<void> markSelfPresent({
+    required String lessonId,
+    required String studentId,
+  }) async {
+    final supClient = Supabase.instance.client;
+    try {
+      // Используем upsert: если записи нет — создаст, если есть — обновит статус
+      await supClient.from('lesson_attendances').upsert({
+        'lesson_id': lessonId,
+        'student_id': studentId,
+        'status': 'present', // Студент подтверждает свое присутствие
+      });
+      print('✅ Студент $studentId отметил себя на уроке $lessonId');
+    } catch (e) {
+      print('❌ Ошибка самоотметки: $e');
+      throw e;
     }
   }
 }
