@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
@@ -12,7 +13,51 @@ import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:edu_att/models/attendance_status.dart';
 
+class LiveIndicator extends StatefulWidget {
+  const LiveIndicator({super.key});
+
+  @override
+  State<LiveIndicator> createState() => _LiveIndicatorState();
+}
+
+class _LiveIndicatorState extends State<LiveIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+// --- ОСНОВНОЙ ЭКРАН ---
 class HomeContentScreen extends ConsumerStatefulWidget {
   const HomeContentScreen({super.key});
 
@@ -21,12 +66,24 @@ class HomeContentScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
+  Timer? _ticker;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
     });
+    // Обновляем прогресс-бар каждую минуту
+    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -43,244 +100,402 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
+    final colorScheme = Theme.of(context).colorScheme;
     final student = ref.watch(currentStudentProvider);
-    final List<LessonAttendanceModel> allAttendances = ref.watch(
-      attendanceProvider,
-    );
     final lesson = ref.watch(currentLessonProvider);
+    final allAttendances = ref.watch(attendanceProvider);
 
-    final DateTime now = DateTime.now();
-    final int absencesCount = LessonsAttendanceService.countAbsencesForMonth(
+    final absencesCount = LessonsAttendanceService.countAbsencesForMonth(
       allAttendances,
-      now,
+      DateTime.now(),
     );
 
-    // Слушатель для Realtime изменений статуса
-    ref.listen<LessonModel?>(currentLessonProvider, (previous, next) {
-      if (previous?.status != next?.status) {
-        if (next?.status == LessonAttendanceStatus.onTeacherEditing) {
-          EduSnackBar.showForbidden(context, ref);
-        } else if (next?.status == LessonAttendanceStatus.confirmed) {
-          EduSnackBar.showSuccess(context, ref, 'Ведомость утверждена');
-        }
+    // Слушатель для уведомлений (Realtime перехват)
+    ref.listen<LessonModel?>(currentLessonProvider, (prev, next) {
+      if (prev?.status != next?.status &&
+          next?.status == LessonAttendanceStatus.onTeacherEditing) {
+        EduSnackBar.showForbidden(context, ref);
       }
     });
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadInitialData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Привет, ${student?.name ?? 'Студент'}! 👋',
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          children: [
+            const SizedBox(height: 24),
+            _buildHeader(context, student),
+            const SizedBox(height: 24),
+            _buildStatsRow(context, absencesCount, allAttendances.length),
+            const SizedBox(height: 32),
+            _buildSectionTitle(context, 'Активное занятие'),
+            const SizedBox(height: 12),
 
-              // Блок статистики
-              _buildStatsCard(context, absencesCount),
+            // Основной блок урока
+            lesson != null
+                ? _buildLiveLessonCard(context, lesson, student, allAttendances)
+                : _buildNoLessonState(context),
 
-              const SizedBox(height: 32),
-              _buildSectionTitle(context, 'Текущее занятие'),
-              const SizedBox(height: 12),
-
-              // ОЦЕНКА СОСТОЯНИЯ: Урок есть или нет
-              lesson != null
-                  ? _buildActiveLessonCard(context, lesson, student)
-                  : _buildNoLessonState(context),
-            ],
-          ),
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
   }
 
-  // --- 1. КАРТОЧКА АКТИВНОГО УРОКА ---
-  Widget _buildActiveLessonCard(
-    BuildContext context,
-    LessonModel lesson,
-    StudentModel? student,
-  ) {
-    return _buildCard(
-      context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildLessonInfo(context, lesson),
-          const SizedBox(height: 20),
-          const Divider(height: 1, thickness: 0.5),
-          const SizedBox(height: 20),
-          _buildCardActions(context, lesson, student),
-        ],
-      ),
-    );
-  }
-
-  // --- 2. КНОПКИ ВНУТРИ КАРТОЧКИ ---
-  Widget _buildCardActions(
-    BuildContext context,
-    LessonModel lesson,
-    StudentModel? student,
-  ) {
-    if (student == null) return const SizedBox.shrink();
-
+  Widget _buildHeader(BuildContext context, StudentModel? student) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Кнопка ЧАТА (Вспомогательная)
-        Expanded(
-          flex: 2,
-          child: OutlinedButton.icon(
-            onPressed: () => context.go('/lesson_chat'),
-            icon: const Icon(Icons.chat_bubble_outline, size: 18),
-            label: const Text("Чат"),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Привет,',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 16,
               ),
             ),
-          ),
+            Text(
+              '${student?.name ?? 'Студент'}! 👋',
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const EduMascot(state: MascotState.idle, height: 45),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow(BuildContext context, int absences, int total) {
+    final attendanceRate =
+        total > 0 ? ((total - absences) / total * 100).toInt() : 100;
+    return Row(
+      children: [
+        _buildSmallStatCard(
+          context,
+          '$attendanceRate%',
+          'Посещаемость',
+          Icons.analytics_outlined,
         ),
         const SizedBox(width: 12),
-
-        // Кнопка ДЕЙСТВИЯ (Основная)
-        Expanded(
-          flex: 3,
-          child:
-              student.isHeadman
-                  ? _buildHeadmanButton(context, lesson)
-                  : _buildSelfCheckInButton(context, lesson, student),
+        _buildSmallStatCard(
+          context,
+          absences.toString(),
+          'Пропусков',
+          Icons.event_busy_outlined,
         ),
       ],
     );
   }
 
-  // Кнопка "Я ТУТ" для обычного студента
-  Widget _buildSelfCheckInButton(
+  Widget _buildSmallStatCard(
+    BuildContext context,
+    String value,
+    String label,
+    IconData icon,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20, color: colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveLessonCard(
+    BuildContext context,
+    LessonModel lesson,
+    StudentModel? student,
+    List<LessonAttendanceModel> attendances,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    double progress = _calculateTimeProgress(lesson.startTime, lesson.endTime);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildLiveBadge(),
+              Text(
+                '${lesson.startTime} - ${lesson.endTime}',
+                style: TextStyle(
+                  color: colorScheme.onPrimary.withOpacity(0.8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            lesson.subjectName ?? 'Предмет',
+            style: TextStyle(
+              color: colorScheme.onPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            'Преподаватель: ${lesson.teacherName}',
+            style: TextStyle(
+              color: colorScheme.onPrimary.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          // ТЕКСТ СТАТУСА (Например: "На проверке у преподавателя")
+          _buildStatusText(context, lesson),
+
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+          _buildCardActions(context, lesson, student, attendances),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusText(BuildContext context, LessonModel lesson) {
+    String text = "Занятие идет";
+    if (lesson.status == LessonAttendanceStatus.onTeacherEditing)
+      text = "📝 Преподаватель вносит правки";
+    if (lesson.status == LessonAttendanceStatus.waitConfirmation)
+      text = "⏳ Ведомость на проверке";
+    if (lesson.status == LessonAttendanceStatus.confirmed)
+      text = "✅ Ведомость закрыта";
+
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildLiveBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.redAccent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LiveIndicator(),
+          SizedBox(width: 8),
+          Text(
+            'LIVE',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardActions(
+    BuildContext context,
+    LessonModel lesson,
+    StudentModel? student,
+    List<LessonAttendanceModel> attendances,
+  ) {
+    if (student == null) return const SizedBox.shrink();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Проверяем, отмечен ли уже студент (Present)
+    final bool isMarked = attendances.any(
+      (a) => a.lessonId == lesson.id && a.status == AttendanceStatus.present,
+    );
+
+    return Row(
+      children: [
+        // ЧАТ (Вспомогательная кнопка)
+        Expanded(
+          flex: 2,
+          child: ElevatedButton(
+            onPressed: () => context.go('/lesson_chat'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.2),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Icon(Icons.chat_bubble_outline, size: 20),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Я ТУТ или ВЕДОМОСТЬ
+        Expanded(
+          flex: 5,
+          child:
+              student.isHeadman
+                  ? _buildHeadmanButton(context, lesson)
+                  : _buildStudentPresenceButton(
+                    context,
+                    lesson,
+                    student,
+                    isMarked,
+                  ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStudentPresenceButton(
     BuildContext context,
     LessonModel lesson,
     StudentModel student,
+    bool isMarked,
   ) {
-    return ElevatedButton.icon(
-      onPressed: () async {
-        try {
-          await LessonsAttendanceService.markSelfPresent(
-            lessonId: lesson.id!,
-            studentId: student.id!,
-          );
-          if (context.mounted) {
-            EduSnackBar.showSuccess(
-              context,
-              ref,
-              "Вы в списке! Хорошей пары 🐾",
-            );
-          }
-        } catch (e) {
-          if (context.mounted)
-            EduSnackBar.showError(context, ref, "Ошибка отметки");
-        }
-      },
-      icon: const Icon(Icons.check_circle, size: 20),
-      label: const Text("Я ТУТ", style: TextStyle(fontWeight: FontWeight.bold)),
+    return ElevatedButton(
+      onPressed:
+          isMarked
+              ? null
+              : () async {
+                try {
+                  await LessonsAttendanceService.markSelfPresent(
+                    lessonId: lesson.id!,
+                    studentId: student.id!,
+                  );
+                  await _loadInitialData(); // Обновляем, чтобы кнопка сменила статус
+                  if (context.mounted)
+                    EduSnackBar.showSuccess(context, ref, "Вы в списке! 🐾");
+                } catch (e) {
+                  if (context.mounted)
+                    EduSnackBar.showError(context, ref, "Ошибка отметки");
+                }
+              },
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green.shade600,
-        foregroundColor: Colors.white,
+        // ФИКС ДЛЯ ТЕМНОЙ ТЕМЫ: кнопка ВСЕГДА белая или ярко-зеленая
+        backgroundColor: isMarked ? Colors.green.shade400 : Colors.white,
+        foregroundColor: isMarked ? Colors.white : Colors.green.shade800,
+        disabledBackgroundColor: Colors.white.withOpacity(0.3),
+        disabledForegroundColor: Colors.white60,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      child: Text(
+        isMarked ? "ВЫ ОТМЕЧЕНЫ ✅" : "Я НА ПАРЕ",
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  // Кнопка для Старосты (Переход к ведомости)
   Widget _buildHeadmanButton(BuildContext context, LessonModel lesson) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    // Определяем состояния блокировки
-    final bool isLockedByTeacher =
-        lesson.status == LessonAttendanceStatus.onTeacherEditing;
-    final bool isWaiting =
-        lesson.status == LessonAttendanceStatus.waitConfirmation;
-    final bool isConfirmed = lesson.status == LessonAttendanceStatus.confirmed;
-    final bool isBlocked = isLockedByTeacher || isWaiting || isConfirmed;
-
-    // Выбираем текст кнопки в зависимости от статуса
-    String buttonText = "ВЕДОМОСТЬ";
-    IconData buttonIcon = Icons.edit_square;
-
-    if (isLockedByTeacher) {
-      buttonText = "ПРЕПОДАВАТЕЛЬ ЗАПОЛНЯЕТ";
-      buttonIcon = Icons.lock_person_outlined;
-    } else if (isWaiting) {
-      buttonText = "НА ПРОВЕРКЕ";
-      buttonIcon = Icons.hourglass_empty;
-    } else if (isConfirmed) {
-      buttonText = "УТВЕРЖДЕНО";
-      buttonIcon = Icons.verified_user_outlined;
-    }
-
-    return ElevatedButton.icon(
-      onPressed: () {
-        if (isLockedByTeacher) {
-          // Если заблокировано преподом — Фрося-охранник
-          EduSnackBar.showForbidden(context, ref);
-        } else if (isWaiting) {
-          EduSnackBar.showInfo(
-            context,
-            ref,
-            "Ведомость уже отправлена. Ждём ответа преподавателя.",
-          );
-        } else if (isConfirmed) {
-          EduSnackBar.showSuccess(
-            context,
-            ref,
-            "Эта ведомость уже закрыта. Всё отлично!",
-          );
-        } else {
-          // Если всё ок — идем на экран отметки
-          context.go('/student/mark');
-        }
-      },
-      icon: Icon(buttonIcon, size: 20),
-      label: Text(
-        buttonText,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-      ),
+    bool isLocked = lesson.status == LessonAttendanceStatus.onTeacherEditing;
+    return ElevatedButton(
+      onPressed:
+          isLocked
+              ? () => EduSnackBar.showForbidden(context, ref)
+              : () => context.go('/student/mark'),
       style: ElevatedButton.styleFrom(
-        // Если заблокировано — делаем кнопку серой/тусклой
-        backgroundColor:
-            isBlocked
-                ? colorScheme.onSurface.withOpacity(0.12)
-                : colorScheme.primary,
-        foregroundColor:
-            isBlocked ? colorScheme.onSurface.withOpacity(0.38) : Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      child: Text(
+        isLocked ? "ЗАБЛОКИРОВАНО" : "ВЕДОМОСТЬ",
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  // --- 3. ЗАГЛУШКА: НЕТ УРОКА ---
+  // --- ЛОГИКА ВРЕМЕНИ ---
+  double _calculateTimeProgress(String startStr, String endStr) {
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final start = today.add(
+        Duration(
+          hours: int.parse(startStr.split(':')[0]),
+          minutes: int.parse(startStr.split(':')[1]),
+        ),
+      );
+      final end = today.add(
+        Duration(
+          hours: int.parse(endStr.split(':')[0]),
+          minutes: int.parse(endStr.split(':')[1]),
+        ),
+      );
+      if (now.isBefore(start)) return 0.0;
+      if (now.isAfter(end)) return 1.0;
+      return now.difference(start).inSeconds / end.difference(start).inSeconds;
+    } catch (e) {
+      return 0.0;
+    }
+  }
+
   Widget _buildNoLessonState(BuildContext context) {
     return Center(
       child: Column(
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 60),
           const EduMascot(state: MascotState.empty, height: 200),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             'Пар пока нет, Фрося отдыхает...',
             style: TextStyle(
@@ -292,135 +507,10 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     );
   }
 
-  // --- ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ (Инфо, Статистика) ---
-  Widget _buildStatsCard(BuildContext context, int count) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return _buildCard(
-      context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Статистика за месяц',
-            style: TextStyle(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  count.toString(),
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  _getAbsencesText(count),
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLessonInfo(BuildContext context, LessonModel lesson) {
-    final colorScheme = Theme.of(context).colorScheme;
-    String teacherFullName =
-        '${lesson.teacherName ?? ''} ${lesson.teacherSurname ?? ''}'.trim();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          lesson.subjectName ?? 'Предмет',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.access_time, size: 16, color: colorScheme.primary),
-            const SizedBox(width: 6),
-            Text(
-              '${_formatTime(lesson.startTime)} - ${_formatTime(lesson.endTime)}',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(
-              Icons.person_outline,
-              size: 16,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Преподаватель: ${teacherFullName.isEmpty ? 'Не указан' : teacherFullName}',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCard(BuildContext context, {required Widget child}) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
     );
-  }
-
-  String _getAbsencesText(int count) {
-    if (count == 0) return 'пропусков';
-    if (count == 1) return 'пропуск';
-    if (count >= 2 && count <= 4) return 'пропуска';
-    return 'пропусков';
-  }
-
-  String _formatTime(String? timeString) {
-    if (timeString == null || timeString.isEmpty) return '--:--';
-    List<String> parts = timeString.split(':');
-    return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : timeString;
   }
 }
