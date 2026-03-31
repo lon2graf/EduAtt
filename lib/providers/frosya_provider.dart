@@ -1,4 +1,4 @@
-import 'package:edu_att/services/shared_preferences_service.dart';
+import 'package:edu_att/data/remote/shared_preferences_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 /// Провайдер, который следит за тем, нужно ли показывать маскота

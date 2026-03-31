@@ -1,6 +1,6 @@
 import 'package:edu_att/theme/app_theme_type.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:edu_att/services/shared_preferences_service.dart';
+import 'package:edu_att/data/remote/shared_preferences_service.dart';
 
 final themeProvider = StateNotifierProvider<ThemeNotifier, AppThemeType>((ref) {
   return ThemeNotifier();

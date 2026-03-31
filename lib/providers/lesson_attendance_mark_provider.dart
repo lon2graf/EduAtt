@@ -3,7 +3,7 @@ import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/models/lesson_model.dart';
-import 'package:edu_att/services/lessons_attendace_service.dart';
+import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/models/attendance_status.dart';
 import 'dart:async';
 

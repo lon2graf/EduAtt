@@ -7,7 +7,7 @@ import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/services/lesson_service.dart';
+import 'package:edu_att/data/remote/lesson_service.dart';
 
 class TeacherAttendanceMarkScreen extends ConsumerStatefulWidget {
   const TeacherAttendanceMarkScreen({super.key});

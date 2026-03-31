@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/models/chat_message_model.dart';
-import 'package:edu_att/services/lesson_chat_service.dart';
+import 'package:edu_att/data/remote/lesson_chat_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 class ChatState {

@@ -1,7 +1,7 @@
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/student_provider.dart';
-import 'package:edu_att/services/lessons_attendace_service.dart';
-import 'package:edu_att/services/student_service.dart';
+import 'package:edu_att/data/remote/lessons_attendace_service.dart';
+import 'package:edu_att/data/remote/student_service.dart';
 import 'package:edu_att/utils/pdf_generator.dart';
 import 'package:edu_att/utils/weekly_report_data_preparer.dart';
 import 'package:flutter/material.dart';

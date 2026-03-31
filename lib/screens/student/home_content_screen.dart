@@ -1,20 +1,30 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:edu_att/providers/student_provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:edu_att/services/lessons_attendace_service.dart';
-import 'package:edu_att/providers/lesson_attendance_provider.dart';
-import 'package:edu_att/models/lesson_attendance_model.dart';
-import 'package:edu_att/models/student_model.dart';
-import 'package:edu_att/providers/current_lesson_provider.dart';
+
+// Модели и Провайдеры
 import 'package:edu_att/models/lesson_model.dart';
+import 'package:edu_att/models/student_model.dart';
+import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
+import 'package:edu_att/models/attendance_status.dart';
+import 'package:edu_att/providers/student_provider.dart';
+import 'package:edu_att/providers/lesson_attendance_provider.dart';
+import 'package:edu_att/providers/current_lesson_provider.dart';
+import 'package:edu_att/providers/group_provider.dart';
+import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
+
+// Сервисы и Утилиты
+import 'package:edu_att/data/remote/lessons_attendace_service.dart';
+import 'package:edu_att/data/remote/lesson_service.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
+
+// Маскот
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
-import 'package:edu_att/utils/edu_snack_bar.dart';
-import 'package:edu_att/models/attendance_status.dart';
 
+// --- ВСПОМОГАТЕЛЬНЫЙ ВИДЖЕТ: Пульсирующая точка ---
 class LiveIndicator extends StatefulWidget {
   const LiveIndicator({super.key});
 
@@ -67,6 +77,7 @@ class HomeContentScreen extends ConsumerStatefulWidget {
 
 class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
   Timer? _ticker;
+  bool _isPreparing = false; // Состояние загрузки для кнопки старосты
 
   @override
   void initState() {
@@ -74,7 +85,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
     });
-    // Обновляем прогресс-бар каждую минуту
+    // Обновляем UI каждую минуту для прогресс-бара
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -110,7 +121,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       DateTime.now(),
     );
 
-    // Слушатель для уведомлений (Realtime перехват)
+    // Realtime слушатель перехвата
     ref.listen<LessonModel?>(currentLessonProvider, (prev, next) {
       if (prev?.status != next?.status &&
           next?.status == LessonAttendanceStatus.onTeacherEditing) {
@@ -132,7 +143,6 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             _buildSectionTitle(context, 'Активное занятие'),
             const SizedBox(height: 12),
 
-            // Основной блок урока
             lesson != null
                 ? _buildLiveLessonCard(context, lesson, student, allAttendances)
                 : _buildNoLessonState(context),
@@ -288,8 +298,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
           ),
 
           const SizedBox(height: 20),
-          // ТЕКСТ СТАТУСА (Например: "На проверке у преподавателя")
-          _buildStatusText(context, lesson),
+          _buildStatusInfoText(lesson), // Статус (редактируется и т.д.)
 
           const SizedBox(height: 8),
           ClipRRect(
@@ -309,14 +318,14 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     );
   }
 
-  Widget _buildStatusText(BuildContext context, LessonModel lesson) {
-    String text = "Занятие идет";
+  Widget _buildStatusInfoText(LessonModel lesson) {
+    String text = "Занятие активно";
     if (lesson.status == LessonAttendanceStatus.onTeacherEditing)
       text = "📝 Преподаватель вносит правки";
     if (lesson.status == LessonAttendanceStatus.waitConfirmation)
       text = "⏳ Ведомость на проверке";
     if (lesson.status == LessonAttendanceStatus.confirmed)
-      text = "✅ Ведомость закрыта";
+      text = "✅ Учет завершен";
 
     return Text(
       text,
@@ -361,24 +370,24 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     List<LessonAttendanceModel> attendances,
   ) {
     if (student == null) return const SizedBox.shrink();
-    final colorScheme = Theme.of(context).colorScheme;
 
-    // Проверяем, отмечен ли уже студент (Present)
+    // Проверяем, отмечен ли уже студент
     final bool isMarked = attendances.any(
       (a) => a.lessonId == lesson.id && a.status == AttendanceStatus.present,
     );
 
     return Row(
       children: [
-        // ЧАТ (Вспомогательная кнопка)
+        // ЧАТ
         Expanded(
           flex: 2,
           child: ElevatedButton(
             onPressed: () => context.go('/lesson_chat'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withOpacity(0.15),
               foregroundColor: Colors.white,
               elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -387,7 +396,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        // Я ТУТ или ВЕДОМОСТЬ
+        // ДЕЙСТВИЕ
         Expanded(
           flex: 5,
           child:
@@ -420,7 +429,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                     lessonId: lesson.id!,
                     studentId: student.id!,
                   );
-                  await _loadInitialData(); // Обновляем, чтобы кнопка сменила статус
+                  await _loadInitialData();
                   if (context.mounted)
                     EduSnackBar.showSuccess(context, ref, "Вы в списке! 🐾");
                 } catch (e) {
@@ -429,12 +438,12 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                 }
               },
       style: ElevatedButton.styleFrom(
-        // ФИКС ДЛЯ ТЕМНОЙ ТЕМЫ: кнопка ВСЕГДА белая или ярко-зеленая
         backgroundColor: isMarked ? Colors.green.shade400 : Colors.white,
         foregroundColor: isMarked ? Colors.white : Colors.green.shade800,
         disabledBackgroundColor: Colors.white.withOpacity(0.3),
         disabledForegroundColor: Colors.white60,
         elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       child: Text(
@@ -445,26 +454,94 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
   }
 
   Widget _buildHeadmanButton(BuildContext context, LessonModel lesson) {
+    final colorScheme = Theme.of(context).colorScheme;
     bool isLocked = lesson.status == LessonAttendanceStatus.onTeacherEditing;
-    return ElevatedButton(
+
+    return ElevatedButton.icon(
       onPressed:
-          isLocked
-              ? () => EduSnackBar.showForbidden(context, ref)
-              : () => context.go('/student/mark'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Theme.of(context).colorScheme.primary,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          (isLocked || _isPreparing)
+              ? () => isLocked ? EduSnackBar.showForbidden(context, ref) : null
+              : () async {
+                setState(() => _isPreparing = true);
+                try {
+                  // 1. ПРОВЕРКА: берем свежий статус из БД перед началом
+                  final freshStatus = await LessonService.getFreshStatus(
+                    lesson.id!,
+                  );
+                  if (freshStatus != LessonAttendanceStatus.free &&
+                      freshStatus != LessonAttendanceStatus.onHeadmanEditing) {
+                    EduSnackBar.showInfo(
+                      context,
+                      ref,
+                      "Статус изменился. Фрося обновляет данные...",
+                    );
+                    _loadInitialData();
+                    return;
+                  }
+
+                  // 2. КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Меняем статус на "Староста редактирует" в БД
+                  if (lesson.status == LessonAttendanceStatus.free) {
+                    await LessonService.updateLessonStatus(
+                      lesson.id!,
+                      LessonAttendanceStatus.onHeadmanEditing,
+                    );
+                    // Обновляем локально, чтобы UI сразу среагировал
+                    ref
+                        .read(currentLessonProvider.notifier)
+                        .updateStatus(LessonAttendanceStatus.onHeadmanEditing);
+                  }
+
+                  // 3. Грузим данные для ведомости
+                  await ref
+                      .read(groupStudentsProvider.notifier)
+                      .loadGroupStudents(lesson.groupId);
+                  final students = ref.read(groupStudentsProvider);
+                  await ref
+                      .read(lessonAttendanceMarkProvider.notifier)
+                      .initializeAttendance(students, lesson);
+
+                  if (context.mounted) {
+                    context.go('/student/mark');
+                  }
+                } catch (e) {
+                  if (context.mounted)
+                    EduSnackBar.showError(
+                      context,
+                      ref,
+                      "Не удалось занять ведомость",
+                    );
+                } finally {
+                  if (mounted) setState(() => _isPreparing = false);
+                }
+              },
+      icon:
+          _isPreparing
+              ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : Icon(
+                isLocked ? Icons.lock_outline : Icons.edit_square,
+                size: 20,
+              ),
+      label: Text(
+        _isPreparing
+            ? "ЗАГРУЗКА..."
+            : (isLocked ? "ЗАБЛОКИРОВАНО" : "ВЕДОМОСТЬ"),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
       ),
-      child: Text(
-        isLocked ? "ЗАБЛОКИРОВАНО" : "ВЕДОМОСТЬ",
-        style: const TextStyle(fontWeight: FontWeight.bold),
+      style: ElevatedButton.styleFrom(
+        backgroundColor:
+            isLocked ? Colors.white.withOpacity(0.3) : Colors.white,
+        foregroundColor: isLocked ? Colors.white70 : colorScheme.primary,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
 
-  // --- ЛОГИКА ВРЕМЕНИ ---
   double _calculateTimeProgress(String startStr, String endStr) {
     try {
       final now = DateTime.now();
@@ -495,7 +572,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         children: [
           const SizedBox(height: 60),
           const EduMascot(state: MascotState.empty, height: 200),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Text(
             'Пар пока нет, Фрося отдыхает...',
             style: TextStyle(

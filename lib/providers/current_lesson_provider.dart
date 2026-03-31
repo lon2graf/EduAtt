@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/services/lesson_service.dart';
+import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 class CurrentLessonNotifier extends StateNotifier<LessonModel?> {

@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/teacher_model.dart';
-import 'package:edu_att/services/teacher_service.dart';
+import 'package:edu_att/data/remote/teacher_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:edu_att/services/shared_preferences_service.dart';
+import 'package:edu_att/data/remote/shared_preferences_service.dart';
 
 class TeacherNotifier extends StateNotifier<TeacherModel?> {
   TeacherNotifier() : super(null);

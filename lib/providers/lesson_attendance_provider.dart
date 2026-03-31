@@ -1,6 +1,6 @@
-import 'package:edu_att/services/lessons_attendace_service.dart';
+import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
-import 'package:edu_att/services/student_service.dart';
+import 'package:edu_att/data/remote/student_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 

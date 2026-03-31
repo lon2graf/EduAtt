@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 
-import 'package:edu_att/services/shared_preferences_service.dart';
+import 'package:edu_att/data/remote/shared_preferences_service.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/theme/theme_provider.dart';

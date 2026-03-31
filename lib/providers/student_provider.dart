@@ -1,7 +1,7 @@
 import 'package:edu_att/models/student_model.dart';
-import 'package:edu_att/services/student_service.dart';
+import 'package:edu_att/data/remote/student_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:edu_att/services/shared_preferences_service.dart';
+import 'package:edu_att/data/remote/shared_preferences_service.dart';
 
 final currentStudentProvider =
     StateNotifierProvider<StudentNotifier, StudentModel?>(
