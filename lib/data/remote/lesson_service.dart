@@ -25,23 +25,23 @@ class LessonService {
           await supClient
               .from('lessons')
               .select('''
-            id,
-            topic,
-            attendance_status,
-            schedule!inner (
-              date,
-              start_time,
-              end_time,
-              group_id,
-              subjects!inner (
+  id,
+  topic,
+  attendance_status,
+  schedule!inner (
+    date,
+    start_time,
+    end_time,
+    group_id,
+    subjects!inner (
                 name
               ),
               teachers!inner (
                 name,
                 surname
               )
-            )
-          ''') // Добавил 'status', он нужен для логики кнопок
+  )
+''') // Добавил 'status', он нужен для логики кнопок
               .eq('schedule.group_id', groupId)
               .eq('schedule.date', today)
               .lte('schedule.start_time', currentTime)
@@ -94,6 +94,8 @@ class LessonService {
           start_time,
           end_time,
           group_id,
+          groups!inner(
+          name),
           subjects!inner (
             name
           ),

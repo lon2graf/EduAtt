@@ -7,6 +7,7 @@ class LessonModel {
   final String startTime;
   final String endTime;
   final String groupId;
+  final String groupName;
   final String subjectName;
   final String teacherName;
   final String teacherSurname;
@@ -19,6 +20,7 @@ class LessonModel {
     required this.startTime,
     required this.endTime,
     required this.groupId,
+    required this.groupName,
     required this.subjectName,
     required this.teacherName,
     required this.teacherSurname,
@@ -33,6 +35,7 @@ class LessonModel {
       startTime: this.startTime,
       endTime: this.endTime,
       groupId: this.groupId,
+      groupName: this.groupName,
       subjectName: this.subjectName,
       teacherName: this.teacherName,
       teacherSurname: this.teacherSurname,
@@ -41,32 +44,32 @@ class LessonModel {
   }
 
   factory LessonModel.fromJson(Map<String, dynamic> json) {
-    final schedule = json['schedule'] as Map<String, dynamic>;
+    final schedule = json['schedule'] as Map<String, dynamic>? ?? {};
 
-    // Парсим id как String
+    // Безопасно получаем объект группы
+    final groups = schedule['groups'] as Map<String, dynamic>? ?? {};
+
+    // Остальные объекты
+    final subjects = schedule['subjects'] as Map<String, dynamic>? ?? {};
+    final teachers = schedule['teachers'] as Map<String, dynamic>? ?? {};
+
+    // Парсинг id (твоя логика верна)
     final id = json['id'];
-    final String? idString;
-
-    if (id == null) {
-      idString = null;
-    } else if (id is int) {
-      idString = id.toString();
-    } else if (id is String) {
-      idString = id;
-    } else {
-      idString = null;
-    }
+    final String? idString = id?.toString();
 
     return LessonModel(
-      id: idString, // Теперь String?
+      id: idString,
       topic: json['topic'] as String?,
-      date: schedule['date'] as String,
-      startTime: schedule['start_time'] as String,
-      endTime: schedule['end_time'] as String,
-      groupId: schedule['group_id'] as String,
-      subjectName: (schedule['subjects']?['name'] ?? '') as String,
-      teacherName: (schedule['teachers']?['name'] ?? '') as String,
-      teacherSurname: (schedule['teachers']?['surname'] ?? '') as String,
+      date: (schedule['date'] ?? '') as String,
+      startTime: (schedule['start_time'] ?? '') as String,
+      endTime: (schedule['end_time'] ?? '') as String,
+      groupId: (schedule['group_id'] ?? '') as String,
+      groupName:
+          (groups['name'] ?? 'Без группы')
+              as String, // Если null, напишет "Без группы"
+      subjectName: (subjects['name'] ?? '') as String,
+      teacherName: (teachers['name'] ?? '') as String,
+      teacherSurname: (teachers['surname'] ?? '') as String,
       status: LessonAttendanceStatus.fromString(
         json['attendance_status'] as String?,
       ),

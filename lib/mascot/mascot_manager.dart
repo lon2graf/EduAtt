@@ -8,6 +8,7 @@ enum MascotState {
   success, // успех
   error, // ошибка
   forbidden, // запрет
+  science, //учеба
 }
 
 class MascotManager {
@@ -34,6 +35,8 @@ class MascotManager {
         return '$base/error/error.svg';
       case MascotState.forbidden:
         return '$base/forbidden/forbidden.svg';
+      case MascotState.science:
+        return '$base/science/science.svg';
     }
   }
 }

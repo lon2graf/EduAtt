@@ -2,7 +2,7 @@ import 'package:edu_att/models/attendance_status.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Для вибрации
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
@@ -22,12 +22,10 @@ class AttendanceMarkScreen extends ConsumerStatefulWidget {
 
 class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
   int currentStudentIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Метод для безопасного выхода с освобождением статуса
   Future<void> _handleBackNavigation() async {
     final lesson = ref.read(currentLessonProvider);
-
-    // Если мы выходим и ведомость была в режиме редактирования старостой - освобождаем её
     if (lesson != null &&
         lesson.status == LessonAttendanceStatus.onHeadmanEditing) {
       await LessonService.updateLessonStatus(
@@ -38,57 +36,20 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
           .read(currentLessonProvider.notifier)
           .updateStatus(LessonAttendanceStatus.free);
     }
-
     if (mounted) context.go('/student/home');
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
+    final colorScheme = Theme.of(context).colorScheme;
     final students = ref.watch(groupStudentsProvider);
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
     final lesson = ref.watch(currentLessonProvider);
 
-    // 1. БЛОКИРОВКА ПРИ ПЕРЕХВАТЕ ПРЕПОДАВАТЕЛЕМ (Realtime)
     if (lesson?.status == LessonAttendanceStatus.onTeacherEditing) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const EduMascot(state: MascotState.forbidden, height: 200),
-                const SizedBox(height: 24),
-                Text(
-                  'Доступ ограничен',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.error,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Преподаватель перехватил управление ведомостью. Ваши правки больше не принимаются.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () => context.go('/student/home'),
-                  child: const Text('Вернуться на главную'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      return _buildLockedScreen(colorScheme);
     }
 
-    // 2. ЭКРАН ЗАГРУЗКИ С ФРОСЕЙ
     if (students.isEmpty || attendanceList.isEmpty) {
       return Scaffold(
         body: Center(
@@ -97,15 +58,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
             children: [
               const EduMascot(state: MascotState.searching, height: 150),
               const SizedBox(height: 20),
-              CircularProgressIndicator(
-                color: colorScheme.primary,
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Фрося готовит список...',
-                style: TextStyle(color: colorScheme.onSurfaceVariant),
-              ),
+              CircularProgressIndicator(color: colorScheme.primary),
             ],
           ),
         ),
@@ -114,17 +67,84 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
 
     final currentStudent = students[currentStudentIndex];
     final currentAttendance = attendanceList.firstWhere(
-      (item) => item.studentId == currentStudent.id,
+      (a) => a.studentId == currentStudent.id,
       orElse: () => attendanceList.first,
     );
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
-        title: const Text("Отметка посещаемости"),
+        title: Text("Студент ${currentStudentIndex + 1} / ${students.length}"),
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed:
-              _handleBackNavigation, // Шлифовка: вызов метода смены статуса
+          onPressed: _handleBackNavigation,
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+          ),
+        ],
+      ),
+      endDrawer: Drawer(
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: colorScheme.primary),
+              child: Center(
+                child: Text(
+                  "Список группы",
+                  style: TextStyle(
+                    color: colorScheme.onPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: students.length,
+                itemBuilder: (context, index) {
+                  final s = students[index];
+                  final a = attendanceList.firstWhere(
+                    (att) => att.studentId == s.id,
+                  );
+                  String statusText = "Не отмечен";
+                  Color statusColor = Colors.grey;
+                  if (a.status == AttendanceStatus.present) {
+                    statusText = "Есть";
+                    statusColor = Colors.green;
+                  } else if (a.status == AttendanceStatus.absent) {
+                    statusText = "Нет";
+                    statusColor = Colors.red;
+                  } else if (a.status == AttendanceStatus.late) {
+                    statusText = "Опоздал";
+                    statusColor = Colors.orange;
+                  }
+
+                  return ListTile(
+                    title: Text('${s.surname} ${s.name}'),
+                    subtitle: Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    trailing: Icon(Icons.circle, size: 10, color: statusColor),
+                    selected: index == currentStudentIndex,
+                    onTap: () {
+                      setState(() => currentStudentIndex = index);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       body: Padding(
@@ -132,100 +152,35 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
         child: Column(
           children: [
             const Spacer(),
-            // --- Карточка студента ---
             _buildStudentCard(context, currentStudent),
-
             const SizedBox(height: 32),
-
-            // --- Текущий статус (Текст) ---
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                "Статус: ${currentAttendance.status?.label ?? 'не отмечен'}",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // --- Кнопки выбора ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _statusButton(
-                  context,
-                  AttendanceStatus.present,
-                  currentStudent.id!,
-                ),
-                _statusButton(
-                  context,
-                  AttendanceStatus.absent,
-                  currentStudent.id!,
-                ),
-                _statusButton(
-                  context,
-                  AttendanceStatus.late,
-                  currentStudent.id!,
-                ),
-              ],
-            ),
-
+            _buildStatusSelector(currentStudent.id!, currentAttendance.status),
             const Spacer(),
-
-            // --- Навигация и Сохранение ---
             Padding(
               padding: const EdgeInsets.only(bottom: 40),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Кнопка Назад
-                  currentStudentIndex > 0
-                      ? IconButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          setState(() => currentStudentIndex--);
-                        },
-                        icon: Icon(
-                          Icons.chevron_left,
-                          size: 44,
-                          color: colorScheme.primary,
-                        ),
-                      )
-                      : const SizedBox(width: 48),
-
-                  // Счетчик
+                  IconButton(
+                    onPressed:
+                        currentStudentIndex > 0
+                            ? () => setState(() => currentStudentIndex--)
+                            : null,
+                    icon: const Icon(Icons.chevron_left, size: 44),
+                  ),
                   Text(
                     "${currentStudentIndex + 1} / ${students.length}",
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
-                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
-                  // Кнопка Вперед или Сохранить
-                  if (currentStudentIndex < students.length - 1)
-                    IconButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        setState(() => currentStudentIndex++);
-                      },
-                      icon: Icon(
-                        Icons.chevron_right,
-                        size: 44,
-                        color: colorScheme.primary,
-                      ),
-                    )
-                  else
-                    _buildSaveButton(context, lesson),
+                  currentStudentIndex < students.length - 1
+                      ? IconButton(
+                        onPressed: () => setState(() => currentStudentIndex++),
+                        icon: const Icon(Icons.chevron_right, size: 44),
+                      )
+                      : _buildSaveButton(context, lesson),
                 ],
               ),
             ),
@@ -239,38 +194,22 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         children: [
           Text(
             student.name,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
           Text(
             student.surname,
-            style: TextStyle(
-              fontSize: 20,
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
         ],
@@ -278,26 +217,90 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     );
   }
 
+  Widget _buildStatusSelector(
+    String studentId,
+    AttendanceStatus? currentStatus,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          _statusOption(
+            studentId,
+            AttendanceStatus.present,
+            "Есть",
+            Icons.check,
+            Colors.green,
+            currentStatus == AttendanceStatus.present,
+          ),
+          _statusOption(
+            studentId,
+            AttendanceStatus.absent,
+            "Нет",
+            Icons.close,
+            Colors.red,
+            currentStatus == AttendanceStatus.absent,
+          ),
+          _statusOption(
+            studentId,
+            AttendanceStatus.late,
+            "Опоздал",
+            Icons.access_time,
+            Colors.orange,
+            currentStatus == AttendanceStatus.late,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusOption(
+    String studentId,
+    AttendanceStatus status,
+    String label,
+    IconData icon,
+    Color color,
+    bool isSelected,
+  ) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: ElevatedButton.icon(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            ref
+                .read(lessonAttendanceMarkProvider.notifier)
+                .setAttendanceStatus(studentId, status);
+          },
+          icon: Icon(icon, size: 16),
+          label: Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isSelected ? color : Colors.transparent,
+            foregroundColor: isSelected ? Colors.white : Colors.black87,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSaveButton(BuildContext context, var lesson) {
     final colorScheme = Theme.of(context).colorScheme;
-
     return ElevatedButton(
       onPressed: () async {
-        if (lesson == null || lesson.id == null) return;
-
-        final freshStatus = await LessonService.getFreshStatus(lesson.id!);
-        if (freshStatus != LessonAttendanceStatus.onHeadmanEditing) {
-          if (context.mounted) {
-            EduSnackBar.showError(
-              context,
-              ref,
-              "Управление перехвачено преподавателем!",
-            );
-            context.go('/student/home');
-          }
-          return;
-        }
-
+        if (lesson == null) return;
         try {
           await ref
               .read(lessonAttendanceMarkProvider.notifier)
@@ -309,9 +312,8 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
           ref
               .read(currentLessonProvider.notifier)
               .updateStatus(LessonAttendanceStatus.waitConfirmation);
-
           if (context.mounted) {
-            EduSnackBar.showSuccess(context, ref, "Отправлено на проверку! ✨");
+            EduSnackBar.showSuccess(context, ref, "Отправлено! ✨");
             context.go('/student/home');
           }
         } catch (e) {
@@ -324,7 +326,6 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
         foregroundColor: colorScheme.onPrimary,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
       ),
       child: const Text(
         "Сохранить",
@@ -333,34 +334,28 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     );
   }
 
-  Widget _statusButton(
-    BuildContext context,
-    AttendanceStatus status,
-    String studentId,
-  ) {
-    return SizedBox(
-      width: 85,
-      height: 85,
-      child: ElevatedButton(
-        onPressed: () {
-          HapticFeedback.mediumImpact(); // Вибрация при выборе статуса
-          ref
-              .read(lessonAttendanceMarkProvider.notifier)
-              .setAttendanceStatus(studentId, status);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: status.color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          elevation: 4,
-          padding: const EdgeInsets.all(8),
-        ),
-        child: Text(
-          status.label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+  Widget _buildLockedScreen(ColorScheme colorScheme) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const EduMascot(state: MascotState.forbidden, height: 150),
+            const SizedBox(height: 24),
+            Text(
+              'Доступ ограничен',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => context.go('/student/home'),
+              child: const Text('Вернуться'),
+            ),
+          ],
         ),
       ),
     );

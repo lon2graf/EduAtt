@@ -140,13 +140,14 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             const SizedBox(height: 24),
             _buildStatsRow(context, absencesCount, allAttendances.length),
             const SizedBox(height: 32),
+
+            // Заголовок остается всегда
             _buildSectionTitle(context, 'Активное занятие'),
             const SizedBox(height: 12),
-
+            // Сама карточка занятия
             lesson != null
                 ? _buildLiveLessonCard(context, lesson, student, allAttendances)
                 : _buildNoLessonState(context),
-
             const SizedBox(height: 40),
           ],
         ),
@@ -156,27 +157,38 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
 
   Widget _buildHeader(BuildContext context, StudentModel? student) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Привет,',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 16,
+    return Padding(
+      // Добавляем небольшой отступ сверху, чтобы текст не прилипал к краю экрана
+      padding: const EdgeInsets.only(top: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Привет,',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            Text(
-              '${student?.name ?? 'Студент'}! 👋',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const EduMascot(state: MascotState.idle, height: 45),
-      ],
+              const SizedBox(
+                height: 2,
+              ), // Увеличили отступ между "Привет" и Именем
+              Text(
+                '${student?.name ?? 'Студент'}! 👋',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -250,6 +262,16 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     double progress = _calculateTimeProgress(lesson.startTime, lesson.endTime);
 
+    // Функция форматирования времени
+    String formatTime(String time) {
+      try {
+        final parts = time.split(':');
+        return parts.length >= 2 ? "${parts[0]}:${parts[1]}" : time;
+      } catch (_) {
+        return time;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -264,54 +286,74 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildLiveBadge(),
-              Text(
-                '${lesson.startTime} - ${lesson.endTime}',
-                style: TextStyle(
-                  color: colorScheme.onPrimary.withOpacity(0.8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+              // Левая часть: Статус, Предмет, Препод
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLiveBadge(),
+                    const SizedBox(height: 12),
+
+                    // Время (теперь оно сразу под бэйджем LIVE)
+                    Text(
+                      '${formatTime(lesson.startTime)} - ${formatTime(lesson.endTime)}',
+                      style: TextStyle(
+                        color: colorScheme.onPrimary.withOpacity(0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    Text(
+                      lesson.subjectName ?? 'Предмет',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${lesson.teacherSurname ?? ''} ${lesson.teacherName ?? ''}'
+                          .trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colorScheme.onPrimary.withOpacity(0.7),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 12),
+              // Фрося справа
+              const EduMascot(state: MascotState.science, height: 120),
             ],
           ),
+
           const SizedBox(height: 16),
-          Text(
-            lesson.subjectName ?? 'Предмет',
-            style: TextStyle(
-              color: colorScheme.onPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            'Преподаватель: ${lesson.teacherName}',
-            style: TextStyle(
-              color: colorScheme.onPrimary.withOpacity(0.7),
-              fontSize: 14,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-          _buildStatusInfoText(lesson), // Статус (редактируется и т.д.)
-
-          const SizedBox(height: 8),
+          // Прогресс
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 6,
+              minHeight: 4,
               backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
               valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          // Кнопки действий
           _buildCardActions(context, lesson, student, attendances),
         ],
       ),
@@ -528,7 +570,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       label: Text(
         _isPreparing
             ? "ЗАГРУЗКА..."
-            : (isLocked ? "ЗАБЛОКИРОВАНО" : "ВЕДОМОСТЬ"),
+            : (isLocked ? "ЗАБЛОКИРОВАНО" : "ПОСЕЩАЕМОСТЬ"),
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
       ),
       style: ElevatedButton.styleFrom(

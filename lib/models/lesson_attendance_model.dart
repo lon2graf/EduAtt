@@ -1,4 +1,7 @@
 import 'package:edu_att/models/attendance_status.dart';
+import 'package:edu_att/data/local_db/app_database.dart';
+import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 class LessonAttendanceModel {
   final String? id; // Изменено на nullable
@@ -120,6 +123,29 @@ class LessonAttendanceModel {
       teacherName: this.teacherName,
       teacherSurname: this.teacherSurname,
       groupId: this.groupId,
+    );
+  }
+
+  // 1. Метод для создания модели из объекта Drift (чтение из базы)
+  factory LessonAttendanceModel.fromDrift(LessonAttendance data) {
+    return LessonAttendanceModel(
+      id: data.id,
+      lessonId: data.lessonId,
+      studentId: data.studentId,
+      status: AttendanceStatus.fromString(
+        data.status,
+      ),  
+    );
+  }
+
+  // 2. Метод для сохранения в базу (превращает модель в Companion)
+  LessonAttendancesCompanion toCompanion({bool isSynced = true}) {
+    return LessonAttendancesCompanion(
+      id: Value(id ?? const Uuid().v4()),
+      lessonId: Value(lessonId),
+      studentId: Value(studentId),
+      status: Value(status?.toDbValue),
+      isSynced: Value(isSynced),
     );
   }
 }

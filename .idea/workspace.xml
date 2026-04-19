@@ -5,13 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cfc2da00-67c4-4214-8409-a8e80565a1b4" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/providers/group_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/providers/group_provider.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/data/local_db/app_database.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/local_db/app_database.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/data/local_db/app_database.g.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/local_db/app_database.g.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/mascot/mascot_manager.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/mascot/mascot_manager.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/lesson_attendance_model.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/lesson_attendance_model.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/screens/student/home_content_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/student/home_content_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/screens/student/login_student_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/student/login_student_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/screens/teacher/login_teacher_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/teacher/login_teacher_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/services/shared_preferences_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/shared_preferences_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/screens/student/lesson_attendance_mark_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/student/lesson_attendance_mark_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/screens/teacher/home_content_teacher_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/teacher/home_content_teacher_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/screens/teacher/teacher_attendance_mark_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/teacher/teacher_attendance_mark_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
