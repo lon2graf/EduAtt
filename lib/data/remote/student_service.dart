@@ -1,19 +1,17 @@
 import 'package:edu_att/models/student_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:edu_att/data/remote/base_service.dart';
 
-class StudentServices {
+class StudentServices extends BaseService {
   static Future<StudentModel?> loginStudent(
     String institutionId,
     String email,
     String password,
   ) async {
-    final supClient = Supabase.instance.client;
-
-    try {
-      final response =
-          await supClient
-              .from('students')
-              .select('''
+    return BaseService.executeSafely<StudentModel>(
+      operation: () async {
+        final response = await BaseService.client
+            .from('students')
+            .select('''
       id,
       name,
       surname,
@@ -23,45 +21,41 @@ class StudentServices {
       isheadman,
       groups!inner (name, institution_id)
     ''')
-              .eq('email', email)
-              .eq('password', password)
-              .eq('groups.institution_id', institutionId)
-              .single();
+            .eq('email', email)
+            .eq('password', password)
+            .eq('groups.institution_id', institutionId)
+            .single();
 
-      //if (response == null) return null; // не найден студент
-      return StudentModel.fromJson(response);
-    } catch (e) {
-      print('Ошибка при входе студента: $e');
-      return null;
-    }
+        return StudentModel.fromJson(response);
+      },
+      errorContext: 'loginStudent',
+    );
   }
 
-  static Future<List<StudentModel>> GetStudentsByGroupId(String groupId) async {
-    final supClient = Supabase.instance.client;
-
-    try {
-      final response = await supClient
-          .from('students')
-          .select('''
+  static Future<List<StudentModel>> getStudentsByGroupId(String groupId) async {
+    final result = await BaseService.executeSafely<List<StudentModel>>(
+      operation: () async {
+        final response = await BaseService.client
+            .from('students')
+            .select('''
         id,
         name,
         surname,
         group_id,
         isheadman
-      ''') // Выбираем все нужные поля
-          .eq('group_id', groupId); // Фильтруем по group_id
+      ''')
+            .eq('group_id', groupId);
 
-      print("Запрашиваю студентов из группы: $groupId");
-      print(response);
+        print("Запрашиваю студентов из группы: $groupId");
+        print(response);
 
-      if (response == null) return [];
+        return (response as List)
+            .map((item) => StudentModel.fromJson(item))
+            .toList();
+      },
+      errorContext: 'getStudentsByGroupId',
+    );
 
-      return (response as List)
-          .map((item) => StudentModel.fromJson(item))
-          .toList();
-    } catch (e) {
-      print('Ошибка при получении студентов по группе: $e');
-      return [];
-    }
+    return result ?? [];
   }
 }

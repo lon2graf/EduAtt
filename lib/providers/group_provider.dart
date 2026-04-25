@@ -15,7 +15,7 @@ class GroupStudentsNotifier extends StateNotifier<List<StudentModel>> {
   Future<void> loadGroupStudents(String groupId) async {
     state = []; // Очищаем предыдущий список (или можно показать загрузку)
     try {
-      final students = await StudentServices.GetStudentsByGroupId(groupId);
+      final students = await StudentServices.getStudentsByGroupId(groupId);
       state = students;
     } catch (e) {
       print('Ошибка в GroupStudentsNotifier.loadGroupStudents: $e');

@@ -1,14 +1,10 @@
-import 'package:edu_att/models/attendance_report_data_model.dart';
-import 'package:edu_att/models/attendance_status.dart';
-import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/models/lesson_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:edu_att/data/remote/base_service.dart';
 
-class LessonService {
+class LessonService extends BaseService {
   // Метод для получения текущего урока для группы
   static Future<LessonModel?> getCurrentLesson(String groupId) async {
-    final supClient = Supabase.instance.client;
     final now = DateTime.now();
 
     // Форматируем дату в формат YYYY-MM-DD
@@ -22,7 +18,7 @@ class LessonService {
     try {
       // Выполняем запрос к Supabase
       final response =
-          await supClient
+          await BaseService.client
               .from('lessons')
               .select('''
   id,
@@ -70,7 +66,6 @@ class LessonService {
   static Future<LessonModel?> getCurrentLessonForTeacher(
     String teacherId,
   ) async {
-    final supClient = Supabase.instance.client; // Клиент Supabase
     final now = DateTime.now(); // Текущее время
 
     // Форматируем дату YYYY-MM-DD
@@ -83,7 +78,7 @@ class LessonService {
 
     // Запрос аналогичен предыдущему, но фильтрация идет по teacher_id
     final response =
-        await supClient
+        await BaseService.client
             .from('lessons')
             .select('''
         id,
@@ -124,36 +119,28 @@ class LessonService {
   }
 
   static Future<void> updateLessonStatus(
-    String lessonId, // Изменено int → String
+    String lessonId,
     LessonAttendanceStatus newStatus,
   ) async {
-    final supClient = Supabase.instance.client;
-    try {
-      // Обратите внимание: поле в базе 'attendnce_status' (опечатка в оригинале)
-      // Возможно, нужно исправить на 'attendance_status' (как в других методах)
-      await supClient
-          .from('lessons')
-          .update({'attendance_status': newStatus.toDbValue})
-          .eq('id', lessonId); // Теперь сравниваем со String
-    } catch (e) {
-      print('Ошибка при обновлении статуса урока: $e');
-      throw e;
-    }
+    return BaseService.executeOrThrow(
+      operation: () async {
+        await BaseService.client
+            .from('lessons')
+            .update({'attendance_status': newStatus.toDbValue})
+            .eq('id', lessonId);
+      },
+      errorContext: 'updateLessonStatus',
+    );
   }
 
   static Future<LessonAttendanceStatus> getFreshStatus(String lessonId) async {
-    // Изменено int → String
-    final supClient = Supabase.instance.client;
-
     try {
-      // Запрашиваем ТОЛЬКО поле 'status' для конкретного id
-      // .single() вернет Map<String, dynamic>, например: {"status": "on_headman_editing"}
-      final response =
-          await supClient
-              .from('lessons')
-              .select('attendance_status')
-              .eq('id', lessonId) // Теперь сравниваем со String
-              .single();
+      // Запрашиваем ТОЛЬКО поле 'attendance_status' для конкретного id
+      final response = await BaseService.client
+          .from('lessons')
+          .select('attendance_status')
+          .eq('id', lessonId)
+          .single();
 
       // Превращаем строку из базы в наш Enum
       return LessonAttendanceStatus.fromString(

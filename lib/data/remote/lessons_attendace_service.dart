@@ -1,47 +1,41 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/models/attendance_status.dart';
+import 'package:edu_att/data/remote/base_service.dart';
 
-class LessonsAttendanceService {
+class LessonsAttendanceService extends BaseService {
   // Метод для сохранения списка посещаемости в базу данных
   static Future<void> saveAttendances(
     List<LessonAttendanceModel> attendances,
   ) async {
-    final supClient = Supabase.instance.client; // Клиент Supabase
-    final data =
-        attendances
-            .map((e) => e.toJson())
-            .toList(); // Конвертация моделей в JSON
-
-    try {
-      // upsert — вставляет или обновляет записи по первичному ключу
-      await supClient.from('lesson_attendances').upsert(data);
-    } catch (e) {
-      // В случае ошибки выбрасываем исключение
-      throw Exception('Не удалось сохранить посещаемость: $e');
-    }
+    return BaseService.executeOrThrow(
+      operation: () async {
+        final data = attendances.map((e) => e.toJson()).toList();
+        // upsert — вставляет или обновляет записи по первичному ключу
+        await BaseService.client.from('lesson_attendances').upsert(data);
+      },
+      errorContext: 'saveAttendances',
+    );
   }
 
   static Stream<List<Map<String, dynamic>>> getAttendanceStream(
     String lessonId,
   ) {
-    return Supabase.instance.client
+    return BaseService.client
         .from('lesson_attendances')
         .stream(primaryKey: ['id'])
         .eq('lesson_id', lessonId);
   }
 
   // Метод получения всех посещений студента по его ID
-  static Future<List<LessonAttendanceModel>> GetAllStudentAttendaces(
+  static Future<List<LessonAttendanceModel>> getAllStudentAttendances(
     String id,
   ) async {
-    final supClient = Supabase.instance.client;
-
-    try {
-      // Выполняем SELECT с вложенными таблицами lessons -> schedule -> subjects/teachers
-      final response = await supClient
-          .from('lesson_attendances')
-          .select('''
+    final result = await BaseService.executeSafely<List<LessonAttendanceModel>>(
+      operation: () async {
+        // Выполняем SELECT с вложенными таблицами lessons -> schedule -> subjects/teachers
+        final response = await BaseService.client
+            .from('lesson_attendances')
+            .select('''
     id,
     lesson_id,
     student_id,
@@ -63,23 +57,20 @@ class LessonsAttendanceService {
       )
     )
   ''')
-          .eq('student_id', id); // Фильтрация по студенту
+            .eq('student_id', id);
 
-      print("ищу пропуски");
-      print(response);
+        print("ищу пропуски");
+        print(response);
 
-      // Если ответ пустой — возвращаем пустой список
-      if (response == null) return [];
+        // Преобразуем JSON в список моделей LessonAttendanceModel
+        return (response as List)
+            .map((item) => LessonAttendanceModel.fromNestedJson(item))
+            .toList();
+      },
+      errorContext: 'getAllStudentAttendances',
+    );
 
-      // Преобразуем JSON в список моделей LessonAttendanceModel
-      return (response as List)
-          .map((item) => LessonAttendanceModel.fromNestedJson(item))
-          .toList();
-    } catch (e) {
-      // Ловим ошибку и выводим в консоль
-      print(e);
-      return [];
-    }
+    return result ?? [];
   }
 
   // Фильтрация посещаемости по конкретной дате
@@ -149,13 +140,11 @@ class LessonsAttendanceService {
 
   // Проверяет, есть ли записи посещаемости для конкретного урока
   static Future<bool> isLessonMarked(String lessonId) async {
-    // Изменено int → String
-    final supClient = Supabase.instance.client;
     try {
-      final response = await supClient
+      final response = await BaseService.client
           .from('lesson_attendances')
           .select('id') // Нам нужен только факт существования ID
-          .eq('lesson_id', lessonId) // Теперь String
+          .eq('lesson_id', lessonId)
           .limit(1); // Достаточно найти хотя бы одну запись
 
       // Если список не пуст, значит урок уже отмечен
@@ -171,11 +160,10 @@ class LessonsAttendanceService {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    final supClient = Supabase.instance.client;
     final startStr = _formatDate(startDate);
     final endStr = _formatDate(endDate);
     try {
-      final response = await supClient
+      final response = await BaseService.client
           .from('lesson_attendances')
           .select('''
           id,
@@ -224,41 +212,40 @@ class LessonsAttendanceService {
   }
 
   static Future<List<LessonAttendanceModel>> getAttendancesForLesson(
-    String lessonId, // Изменено int → String
+    String lessonId,
   ) async {
-    final supClient = Supabase.instance.client;
+    final result = await BaseService.executeSafely<List<LessonAttendanceModel>>(
+      operation: () async {
+        final response = await BaseService.client
+            .from('lesson_attendances')
+            .select()
+            .eq('lesson_id', lessonId);
 
-    try {
-      final response = await supClient
-          .from('lesson_attendances')
-          .select()
-          .eq('lesson_id', lessonId); // Теперь String
+        return (response as List)
+            .map((json) => LessonAttendanceModel.fromNestedJson(json))
+            .toList();
+      },
+      errorContext: 'getAttendancesForLesson (lessonId: $lessonId)',
+    );
 
-      return (response as List)
-          .map((json) => LessonAttendanceModel.fromNestedJson(json))
-          .toList();
-    } catch (e) {
-      print('Ошибка при загрузке отметок для урока $lessonId: $e');
-      return []; // В случае ошибки возвращаем пустой список, чтобы приложение не упало
-    }
+    return result ?? [];
   }
 
   static Future<void> markSelfPresent({
     required String lessonId,
     required String studentId,
   }) async {
-    final supClient = Supabase.instance.client;
-    try {
-      // Используем upsert: если записи нет — создаст, если есть — обновит статус
-      await supClient.from('lesson_attendances').upsert({
-        'lesson_id': lessonId,
-        'student_id': studentId,
-        'status': 'present', // Студент подтверждает свое присутствие
-      });
-      print('✅ Студент $studentId отметил себя на уроке $lessonId');
-    } catch (e) {
-      print('❌ Ошибка самоотметки: $e');
-      throw e;
-    }
+    return BaseService.executeOrThrow(
+      operation: () async {
+        // Используем upsert: если записи нет — создаст, если есть — обновит статус
+        await BaseService.client.from('lesson_attendances').upsert({
+          'lesson_id': lessonId,
+          'student_id': studentId,
+          'status': 'present', // Студент подтверждает свое присутствие
+        });
+        print('✅ Студент $studentId отметил себя на уроке $lessonId');
+      },
+      errorContext: 'markSelfPresent',
+    );
   }
 }

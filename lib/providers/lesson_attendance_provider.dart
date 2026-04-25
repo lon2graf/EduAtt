@@ -9,7 +9,7 @@ class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
 
   /// Загружает все посещения студента
   Future<void> loadStudentAttendances(String studentId) async {
-    final attendances = await LessonsAttendanceService.GetAllStudentAttendaces(
+    final attendances = await LessonsAttendanceService.getAllStudentAttendances(
       studentId,
     );
     state = attendances;

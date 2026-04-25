@@ -221,7 +221,7 @@ class _TeacherWeeklyReportScreenState
     try {
       final groupName =
           _groups.firstWhere((g) => g.id == _selectedGroupId).name;
-      final allStudents = await StudentServices.GetStudentsByGroupId(
+      final allStudents = await StudentServices.getStudentsByGroupId(
         _selectedGroupId!,
       );
       final rawRecords =

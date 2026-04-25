@@ -1,18 +1,16 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/models/chat_message_model.dart';
+import 'package:edu_att/data/remote/base_service.dart';
 
-class LessonChatService {
+class LessonChatService extends BaseService {
   /// Метод отправки сообщения
   static Future<String?> sendMessage({
     required String lessonId,
     required String message,
     required String senderId,
-    required String senderType, // Оставляем в параметрах для логики
+    required String senderType,
     required String senderName,
     required String senderSurname,
   }) async {
-    final supClient = Supabase.instance.client;
-
     try {
       final Map<String, dynamic> messageData = {
         'lesson_id': lessonId,
@@ -28,7 +26,7 @@ class LessonChatService {
         messageData['sender_student_id'] = senderId;
       }
 
-      await supClient.from('lesson_comment').insert(messageData);
+      await BaseService.client.from('lesson_comment').insert(messageData);
       return null;
     } catch (e) {
       return e.toString();
@@ -36,42 +34,44 @@ class LessonChatService {
   }
 
   static Future<List<ChatMessage>> getAllMessages(String lessonId) async {
-    final supClient = Supabase.instance.client;
-    try {
-      final response = await supClient
-          .from('lesson_comment')
-          .select('*')
-          .eq('lesson_id', lessonId)
-          .order('timestamp', ascending: true);
+    final result = await BaseService.executeSafely<List<ChatMessage>>(
+      operation: () async {
+        final response = await BaseService.client
+            .from('lesson_comment')
+            .select('*')
+            .eq('lesson_id', lessonId)
+            .order('timestamp', ascending: true);
 
-      return (response as List)
-          .map((json) => ChatMessage.fromJson(json))
-          .toList();
-    } catch (e) {
-      print('Ошибка загрузки истории чата: $e');
-      return [];
-    }
+        return (response as List)
+            .map((json) => ChatMessage.fromJson(json))
+            .toList();
+      },
+      errorContext: 'getAllMessages',
+    );
+
+    return result ?? [];
   }
 
   static Future<List<ChatMessage>> getNewMessagesSince({
     required String lessonId,
     required DateTime since,
   }) async {
-    final supClient = Supabase.instance.client;
-    try {
-      final response = await supClient
-          .from('lesson_comment')
-          .select('*')
-          .eq('lesson_id', lessonId)
-          .gt('timestamp', since.toUtc().toIso8601String())
-          .order('timestamp', ascending: true);
+    final result = await BaseService.executeSafely<List<ChatMessage>>(
+      operation: () async {
+        final response = await BaseService.client
+            .from('lesson_comment')
+            .select('*')
+            .eq('lesson_id', lessonId)
+            .gt('timestamp', since.toUtc().toIso8601String())
+            .order('timestamp', ascending: true);
 
-      return (response as List)
-          .map((json) => ChatMessage.fromJson(json))
-          .toList();
-    } catch (e) {
-      print('Ошибка загрузки новых сообщений: $e');
-      return [];
-    }
+        return (response as List)
+            .map((json) => ChatMessage.fromJson(json))
+            .toList();
+      },
+      errorContext: 'getNewMessagesSince',
+    );
+
+    return result ?? [];
   }
 }

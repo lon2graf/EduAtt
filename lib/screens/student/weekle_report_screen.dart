@@ -190,7 +190,7 @@ class WeeklyReportScreen extends ConsumerWidget {
         ),
       );
 
-      final allStudents = await StudentServices.GetStudentsByGroupId(
+      final allStudents = await StudentServices.getStudentsByGroupId(
         student.groupId,
       );
       final rawRecords =
