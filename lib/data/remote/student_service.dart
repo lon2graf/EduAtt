@@ -1,5 +1,6 @@
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/data/remote/base_service.dart';
+import 'package:edu_att/utils/app_logger.dart';
 
 class StudentServices extends BaseService {
   static Future<StudentModel?> loginStudent(
@@ -46,8 +47,8 @@ class StudentServices extends BaseService {
       ''')
             .eq('group_id', groupId);
 
-        print("Запрашиваю студентов из группы: $groupId");
-        print(response);
+        AppLogger.debug('Запрос студентов группы: $groupId', 'StudentService');
+        AppLogger.debug('Ответ БД: ${response.length} студентов', 'StudentService');
 
         return (response as List)
             .map((item) => StudentModel.fromJson(item))

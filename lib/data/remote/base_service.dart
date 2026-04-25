@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:edu_att/utils/app_logger.dart';
 
 /// Базовый класс для всех сервисов, работающих с Supabase
 /// Предоставляет общий доступ к клиенту и вспомогательные методы
@@ -15,8 +16,7 @@ abstract class BaseService {
     try {
       return await operation();
     } catch (e, stackTrace) {
-      print('❌ Ошибка в $errorContext: $e');
-      print('StackTrace: $stackTrace');
+      AppLogger.error('Ошибка в $errorContext', e, stackTrace, 'BaseService');
       return null;
     }
   }
@@ -29,8 +29,8 @@ abstract class BaseService {
   }) async {
     try {
       return await operation();
-    } catch (e) {
-      print('❌ Ошибка в $errorContext: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Ошибка в $errorContext', e, stackTrace, 'BaseService');
       rethrow;
     }
   }

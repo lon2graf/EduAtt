@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/data/remote/lesson_service.dart';
+import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
@@ -53,15 +54,13 @@ class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
 
               // Если статус в базе изменился — обновляем стейт через copyWith
               if (state!.status != updatedStatus) {
-                print(
-                  '📡 [Realtime] Статус урока в БД изменился на: $updatedStatus',
-                );
+                AppLogger.info('Realtime: Статус урока в БД изменился на: $updatedStatus', 'CurrentLessonNotifier');
                 state = state!.copyWith(status: updatedStatus);
               }
             }
           },
           onError: (error) {
-            print('❌ [Realtime Error] Ошибка в стриме урока: $error');
+            AppLogger.error('Realtime: Ошибка в стриме урока', error, null, 'CurrentLessonNotifier');
           },
         );
   }

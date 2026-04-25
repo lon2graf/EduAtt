@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:edu_att/supabase/clean_http_client.dart';
+import 'package:edu_att/utils/app_logger.dart';
 
 class SupabaseConfig {
   static Future<void> init() async {
@@ -9,6 +10,6 @@ class SupabaseConfig {
       anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
       httpClient: CleanHttpClient(),
     );
-    print("супик инициилизируется");
+    AppLogger.info('Supabase инициализирован', 'SupabaseConfig');
   }
 }

@@ -1,6 +1,7 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/attendance_status.dart';
 import 'package:edu_att/data/remote/base_service.dart';
+import 'package:edu_att/utils/app_logger.dart';
 
 class LessonsAttendanceService extends BaseService {
   // Метод для сохранения списка посещаемости в базу данных
@@ -59,8 +60,8 @@ class LessonsAttendanceService extends BaseService {
   ''')
             .eq('student_id', id);
 
-        print("ищу пропуски");
-        print(response);
+        AppLogger.debug('Запрос всех посещений студента: $id', 'LessonsAttendanceService');
+        AppLogger.debug('Ответ БД: ${response.length} записей', 'LessonsAttendanceService');
 
         // Преобразуем JSON в список моделей LessonAttendanceModel
         return (response as List)
@@ -150,7 +151,7 @@ class LessonsAttendanceService extends BaseService {
       // Если список не пуст, значит урок уже отмечен
       return (response as List).isNotEmpty;
     } catch (e) {
-      print('Ошибка при проверке статуса урока: $e');
+      AppLogger.error('Ошибка при проверке статуса урока', e, null, 'LessonsAttendanceService');
       return false;
     }
   }
@@ -202,7 +203,7 @@ class LessonsAttendanceService extends BaseService {
 
       return attendances;
     } catch (e) {
-      print('❗ Ошибка в getWeeklyGroupAttendance: $e');
+      AppLogger.error('Ошибка в getWeeklyGroupAttendance', e, null, 'LessonsAttendanceService');
       return [];
     }
   }
@@ -243,7 +244,7 @@ class LessonsAttendanceService extends BaseService {
           'student_id': studentId,
           'status': 'present', // Студент подтверждает свое присутствие
         });
-        print('✅ Студент $studentId отметил себя на уроке $lessonId');
+        AppLogger.info('Студент $studentId отметил себя на уроке $lessonId', 'LessonsAttendanceService');
       },
       errorContext: 'markSelfPresent',
     );

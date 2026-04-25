@@ -1,5 +1,6 @@
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/data/remote/student_service.dart';
+import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:edu_att/data/remote/shared_preferences_service.dart';
 
@@ -33,7 +34,7 @@ class StudentNotifier extends StateNotifier<StudentModel?> {
       }
       return false;
     } catch (e) {
-      print('ошибка при логине студента: $e');
+      AppLogger.error('Ошибка при логине студента', e, null, 'StudentNotifier');
       return false;
     }
   }

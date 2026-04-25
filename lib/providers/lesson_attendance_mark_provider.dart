@@ -1,5 +1,6 @@
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
+import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/models/lesson_model.dart';
@@ -43,7 +44,7 @@ class LessonAttendanceMarkNotifier
       _startAttendanceStream(lessonId);
     } catch (e) {
       // ОБРАБОТКА ОШИБКИ ПРИ ЗАГРУЗКЕ
-      print('❌ Ошибка инициализации ведомости: $e');
+      AppLogger.error('Ошибка инициализации ведомости', e, null, 'LessonAttendanceMarkNotifier');
       // Тут можно либо оставить список пустым, либо пометить какую-то переменную ошибки
     }
   }
@@ -75,7 +76,7 @@ class LessonAttendanceMarkNotifier
       },
       // ОБРАБОТКА ОШИБКИ В ПОТОКЕ
       onError: (error) {
-        print('❌ Ошибка в Realtime-потоке посещаемости: $error');
+        AppLogger.error('Ошибка в Realtime-потоке посещаемости', error, null, 'LessonAttendanceMarkNotifier');
         // Например, можно попробовать перезапустить стрим через пару секунд
       },
     );
@@ -95,9 +96,9 @@ class LessonAttendanceMarkNotifier
     try {
       // Отправляем текущее состояние (state) в сервис для Upsert-запроса
       await LessonsAttendanceService.saveAttendances(state);
-      print('✅ Посещаемость успешно синхронизирована с БД');
+      AppLogger.info('Посещаемость успешно синхронизирована с БД', 'LessonAttendanceMarkNotifier');
     } catch (e) {
-      print('❌ Ошибка при сохранении посещаемости: $e');
+      AppLogger.error('Ошибка при сохранении посещаемости', e, null, 'LessonAttendanceMarkNotifier');
       rethrow; // Перебрасываем ошибку, чтобы UI (EduSnackBar) её поймал
     }
   }

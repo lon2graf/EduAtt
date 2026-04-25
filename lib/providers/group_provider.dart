@@ -1,5 +1,6 @@
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/data/remote/student_service.dart';
+import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 // Провайдер для списка студентов группы
@@ -18,7 +19,7 @@ class GroupStudentsNotifier extends StateNotifier<List<StudentModel>> {
       final students = await StudentServices.getStudentsByGroupId(groupId);
       state = students;
     } catch (e) {
-      print('Ошибка в GroupStudentsNotifier.loadGroupStudents: $e');
+      AppLogger.error('Ошибка в GroupStudentsNotifier.loadGroupStudents', e, null, 'GroupStudentsNotifier');
       state = []; // В случае ошибки устанавливаем пустой список
     }
   }

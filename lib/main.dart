@@ -8,6 +8,7 @@ import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/theme/theme_provider.dart';
 import 'package:edu_att/theme/app_theme.dart';
+import 'package:edu_att/utils/app_logger.dart';
 
 // Импортируем наш файл с роутером
 import 'package:edu_att/router/app_router.dart';
@@ -19,8 +20,7 @@ void main() async {
     await dotenv.load(fileName: ".env");
     await SupabaseConfig.init();
   } catch (e, stackTrace) {
-    print('Ошибка при инициализации: $e');
-    print(stackTrace);
+    AppLogger.error('Ошибка при инициализации', e, stackTrace, 'main');
   }
 
   runApp(const ProviderScope(child: EduAttApp()));

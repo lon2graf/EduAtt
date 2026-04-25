@@ -1,6 +1,7 @@
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/data/remote/base_service.dart';
+import 'package:edu_att/utils/app_logger.dart';
 
 class LessonService extends BaseService {
   // Метод для получения текущего урока для группы
@@ -45,10 +46,9 @@ class LessonService extends BaseService {
               .maybeSingle();
 
       // Отладочные выводы
-      print("!!!!!!!!!!!!!!!!!!!получаю данные о текущем уроке!!!!!!!!!!!");
-      print("Дата: $today");
-      print("Время: $currentTime");
-      print("Ответ БД: $response");
+      AppLogger.info('Получение текущего урока для группы', 'LessonService');
+      AppLogger.debug('Дата: $today, Время: $currentTime', 'LessonService');
+      AppLogger.debug('Ответ БД: ${response != null ? "урок найден" : "урок не найден"}', 'LessonService');
 
       // Если урок не найден — возвращаем null
       if (response == null) return null;
@@ -56,8 +56,7 @@ class LessonService extends BaseService {
       // Преобразуем JSON в модель LessonModel
       return LessonModel.fromJson(response);
     } catch (e, stackTrace) {
-      print("🔴 КРИТИЧЕСКАЯ ОШИБКА в getCurrentLesson: $e");
-      print(stackTrace); // Покажет строку кода, где упало
+      AppLogger.error('Критическая ошибка в getCurrentLesson', e, stackTrace, 'LessonService');
       return null;
     }
   }
@@ -107,10 +106,10 @@ class LessonService extends BaseService {
             .maybeSingle(); // Получаем одну запись
 
     // Отладочные выводы
-    print(teacherId);
-    print(today);
-    print(currentTime);
-    print(response);
+    AppLogger.info('Получение текущего урока для преподавателя', 'LessonService');
+    AppLogger.debug('ID преподавателя: $teacherId', 'LessonService');
+    AppLogger.debug('Дата: $today, Время: $currentTime', 'LessonService');
+    AppLogger.debug('Ответ БД: ${response != null ? "урок найден" : "урок не найден"}', 'LessonService');
 
     if (response == null) return null;
 
@@ -147,7 +146,8 @@ class LessonService extends BaseService {
         response['attendance_status'] as String?,
       );
     } catch (e) {
-      print('Ошибка при проверке статуса (getFreshStatus): $e');
+      AppLogger.warning('Ошибка при проверке статуса урока, возвращаем Free', 'LessonService');
+      AppLogger.error('getFreshStatus', e, null, 'LessonService');
       // В случае ошибки (например, нет интернета) возвращаем Free,
       // либо можно обработать иначе, но Free позволит не блокировать приложение намертво
       return LessonAttendanceStatus.free;
