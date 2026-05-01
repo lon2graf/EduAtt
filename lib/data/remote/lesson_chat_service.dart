@@ -1,5 +1,6 @@
 import 'package:edu_att/models/chat_message_model.dart';
 import 'package:edu_att/data/remote/base_service.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 class LessonChatService extends BaseService {
   /// Метод отправки сообщения
@@ -49,7 +50,10 @@ class LessonChatService extends BaseService {
       errorContext: 'getAllMessages',
     );
 
-    return result ?? [];
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => [],
+    };
   }
 
   static Future<List<ChatMessage>> getNewMessagesSince({
@@ -72,6 +76,9 @@ class LessonChatService extends BaseService {
       errorContext: 'getNewMessagesSince',
     );
 
-    return result ?? [];
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => [],
+    };
   }
 }

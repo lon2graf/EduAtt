@@ -10,6 +10,7 @@ import 'package:edu_att/utils/pdf_generator.dart';
 import 'package:printing/printing.dart';
 import 'package:edu_att/models/teacher_model.dart';
 import 'package:edu_att/models/group_model.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 import 'dart:typed_data';
 
 class TeacherWeeklyReportScreen extends ConsumerStatefulWidget {
@@ -47,9 +48,7 @@ class _TeacherWeeklyReportScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка загрузки групп: $e')));
+        EduSnackBar.showError(context, ref, 'Ошибка загрузки групп: $e');
       }
     }
   }
@@ -173,9 +172,7 @@ class _TeacherWeeklyReportScreenState
     final colorScheme = Theme.of(context).colorScheme;
 
     if (_selectedGroupId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Выберите группу')));
+      EduSnackBar.showInfo(context, ref, 'Выберите группу');
       return;
     }
 
@@ -246,9 +243,7 @@ class _TeacherWeeklyReportScreenState
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        EduSnackBar.showError(context, ref, 'Ошибка генерации отчета: $e');
       }
     }
   }

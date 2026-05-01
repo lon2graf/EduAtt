@@ -2,6 +2,7 @@ import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/attendance_status.dart';
 import 'package:edu_att/data/remote/base_service.dart';
 import 'package:edu_att/utils/app_logger.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 class LessonsAttendanceService extends BaseService {
   // Метод для сохранения списка посещаемости в базу данных
@@ -71,7 +72,10 @@ class LessonsAttendanceService extends BaseService {
       errorContext: 'getAllStudentAttendances',
     );
 
-    return result ?? [];
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => [],
+    };
   }
 
   // Фильтрация посещаемости по конкретной дате
@@ -229,7 +233,10 @@ class LessonsAttendanceService extends BaseService {
       errorContext: 'getAttendancesForLesson (lessonId: $lessonId)',
     );
 
-    return result ?? [];
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => [],
+    };
   }
 
   static Future<void> markSelfPresent({

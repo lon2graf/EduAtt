@@ -1,5 +1,6 @@
 import 'package:edu_att/models/teacher_model.dart';
 import 'package:edu_att/data/remote/base_service.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 class TeacherService extends BaseService {
   static Future<TeacherModel?> loginTeacher({
@@ -7,7 +8,7 @@ class TeacherService extends BaseService {
     required String password,
     required String institutionId,
   }) async {
-    return BaseService.executeSafely<TeacherModel>(
+    final result = await BaseService.executeSafely<TeacherModel>(
       operation: () async {
         final response = await BaseService.client
             .from('teachers')
@@ -21,5 +22,10 @@ class TeacherService extends BaseService {
       },
       errorContext: 'loginTeacher',
     );
+
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => null,
+    };
   }
 }

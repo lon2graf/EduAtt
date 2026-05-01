@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:edu_att/utils/app_logger.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 /// Базовый класс для всех сервисов, работающих с Supabase
 /// Предоставляет общий доступ к клиенту и вспомогательные методы
@@ -8,16 +9,17 @@ abstract class BaseService {
   static SupabaseClient get client => Supabase.instance.client;
 
   /// Вспомогательный метод для безопасного выполнения запросов
-  /// Возвращает null в случае ошибки и выводит лог
-  static Future<T?> executeSafely<T>({
+  /// Возвращает Success(result) при успехе или Failure(message) при ошибке
+  static Future<DataResult<T>> executeSafely<T>({
     required Future<T> Function() operation,
     required String errorContext,
   }) async {
     try {
-      return await operation();
+      final result = await operation();
+      return Success(result);
     } catch (e, stackTrace) {
       AppLogger.error('Ошибка в $errorContext', e, stackTrace, 'BaseService');
-      return null;
+      return Failure(e.toString(), e);
     }
   }
 

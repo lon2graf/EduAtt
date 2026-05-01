@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -18,6 +20,9 @@ class MainMenuScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Маскот Фрося на главном экране
+              const EduMascot(state: MascotState.idle, height: 150),
+              const SizedBox(height: 24),
               // Логотип — теперь адаптивный
               Text(
                 'EduAtt',
@@ -36,7 +41,7 @@ class MainMenuScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 60),
+              const SizedBox(height: 48),
 
               // Кнопка "Студент"
               _buildMenuButton(

@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class MissesContentScreen extends ConsumerStatefulWidget {
   const MissesContentScreen({super.key});
@@ -162,14 +164,11 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.calendar_today_outlined,
-              size: 64,
-              color: colorScheme.outline.withOpacity(0.5),
-            ),
+            const EduMascot(state: MascotState.empty, height: 180),
             const SizedBox(height: 16),
             Text(
-              'Занятий не найдено',
+              'Пропусков нет!\nФрося рада твоей посещаемости!',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontSize: 16,

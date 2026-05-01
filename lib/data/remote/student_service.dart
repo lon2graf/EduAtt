@@ -1,6 +1,7 @@
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/data/remote/base_service.dart';
 import 'package:edu_att/utils/app_logger.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 class StudentServices extends BaseService {
   static Future<StudentModel?> loginStudent(
@@ -8,7 +9,7 @@ class StudentServices extends BaseService {
     String email,
     String password,
   ) async {
-    return BaseService.executeSafely<StudentModel>(
+    final result = await BaseService.executeSafely<StudentModel>(
       operation: () async {
         final response = await BaseService.client
             .from('students')
@@ -31,6 +32,11 @@ class StudentServices extends BaseService {
       },
       errorContext: 'loginStudent',
     );
+
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => null,
+    };
   }
 
   static Future<List<StudentModel>> getStudentsByGroupId(String groupId) async {
@@ -57,6 +63,9 @@ class StudentServices extends BaseService {
       errorContext: 'getStudentsByGroupId',
     );
 
-    return result ?? [];
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => [],
+    };
   }
 }

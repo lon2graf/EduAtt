@@ -4,6 +4,7 @@ import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/data/remote/student_service.dart';
 import 'package:edu_att/utils/pdf_generator.dart';
 import 'package:edu_att/utils/weekly_report_data_preparer.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
@@ -182,13 +183,8 @@ class WeeklyReportScreen extends ConsumerWidget {
     if (confirm != true) return;
 
     try {
-      // Показываем индикатор загрузки (Snackbar или Dialog)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Генерация PDF...'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      // Показываем индикатор загрузки
+      EduSnackBar.showWaiting(context, ref, 'Генерация PDF...');
 
       final allStudents = await StudentServices.getStudentsByGroupId(
         student.groupId,
@@ -215,9 +211,7 @@ class WeeklyReportScreen extends ConsumerWidget {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        EduSnackBar.showError(context, ref, 'Ошибка генерации PDF: $e');
       }
     }
   }

@@ -8,6 +8,8 @@ import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/institution_provider.dart';
 import 'package:edu_att/models/insituiton_model.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class StudentLoginScreen extends ConsumerStatefulWidget {
   const StudentLoginScreen({super.key});
@@ -41,6 +43,9 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // Маскот Фрося приветствует
+                    const EduMascot(state: MascotState.greeting, height: 120),
+                    const SizedBox(height: 24),
                     Text(
                       'Вход студента',
                       style: TextStyle(
@@ -51,7 +56,7 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                         letterSpacing: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 32),
 
                     // -----------------------------
                     // DROPDOWN INSTITUTIONS
@@ -236,9 +241,7 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
       child: ElevatedButton(
         onPressed: () async {
           if (selectedInstitutionId == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Выберите организацию")),
-            );
+            EduSnackBar.showInfo(context, ref, "Выберите организацию");
             return;
           }
 

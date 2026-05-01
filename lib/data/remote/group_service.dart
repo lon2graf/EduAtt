@@ -1,5 +1,6 @@
 import 'package:edu_att/models/group_model.dart';
 import 'package:edu_att/data/remote/base_service.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 class GroupService extends BaseService {
   static Future<List<GroupModel>> getGroupsByInstitution(
@@ -20,6 +21,9 @@ class GroupService extends BaseService {
       errorContext: 'getGroupsByInstitution',
     );
 
-    return result ?? [];
+    return switch (result) {
+      Success(:final data) => data,
+      Failure() => [],
+    };
   }
 }

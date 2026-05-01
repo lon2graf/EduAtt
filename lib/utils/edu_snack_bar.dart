@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/providers/frosya_provider.dart';
+import 'package:edu_att/utils/data_result.dart';
 
 class EduSnackBar {
   /// Главный приватный метод для сборки SnackBar
@@ -149,5 +150,16 @@ class EduSnackBar {
       mascotMessage: 'Фрося сообщает: $info',
       neutralMessage: 'Информация: $info',
     );
+  }
+
+  // 10. Из DataResult — показывает ошибку при Failure, иначе ничего
+  static void showFromDataResult(
+    BuildContext context,
+    WidgetRef ref,
+    DataResult result,
+  ) {
+    if (result case Failure(:final message)) {
+      showError(context, ref, message);
+    }
   }
 }

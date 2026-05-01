@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
+import 'package:edu_att/mascot/mascot_widget.dart';
+import 'package:edu_att/mascot/mascot_manager.dart';
 
 class SubjectAbsencesScreen extends ConsumerWidget {
   final String subjectName;
@@ -134,14 +136,11 @@ class SubjectAbsencesScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.celebration_outlined,
-            size: 64,
-            color: colorScheme.primary.withOpacity(0.5),
-          ),
+          const EduMascot(state: MascotState.success, height: 180),
           const SizedBox(height: 16),
           Text(
-            'Пропусков по этому предмету нет!',
+            'Пропусков по этому предмету нет!\nФрося гордится тобой!',
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: colorScheme.onSurfaceVariant,
               fontSize: 16,

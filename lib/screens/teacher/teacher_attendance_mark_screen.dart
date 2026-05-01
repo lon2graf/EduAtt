@@ -12,6 +12,7 @@ import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/utils/app_logger.dart';
+import 'package:edu_att/utils/edu_snack_bar.dart';
 
 class TeacherAttendanceMarkScreen extends ConsumerStatefulWidget {
   const TeacherAttendanceMarkScreen({super.key});
@@ -331,12 +332,7 @@ class _TeacherAttendanceMarkScreenState
 
           if (context.mounted) {
             context.go('/teacher/home');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Ведомость подтверждена!'),
-                backgroundColor: Colors.green,
-              ),
-            );
+            EduSnackBar.showSuccess(context, ref, 'Ведомость подтверждена!');
           }
         } catch (e) {
           AppLogger.error('Ошибка сохранения посещаемости', e, null, 'TeacherAttendanceMarkScreen');
