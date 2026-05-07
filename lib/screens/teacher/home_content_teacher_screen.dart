@@ -145,17 +145,28 @@ class _TeacherHomeContentScreenState
 
   Widget _buildHeader(BuildContext context, var teacher) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Здравствуйте,',
-          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Здравствуйте,',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${teacher?.name ?? 'Преподаватель'}! 👋',
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          '${teacher?.name ?? 'Преподаватель'}! 👋',
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+        IconButton(
+          icon: const Icon(Icons.calendar_month_outlined),
+          tooltip: 'Расписание',
+          onPressed: () => context.push('/schedule'),
         ),
       ],
     );

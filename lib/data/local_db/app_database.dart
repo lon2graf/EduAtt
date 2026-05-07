@@ -76,8 +76,9 @@ class LessonAttendances extends Table {
   TextColumn get lessonId => text().references(Lessons, #id)();
   TextColumn get studentId => text().references(Students, #id)();
   TextColumn get status => text().nullable()();
-  // Добавляем поле для оффлайн-логики
   BoolColumn get isSynced => boolean().withDefault(const Constant(true))();
+  // Время последнего изменения — используется для разрешения конфликтов при синхронизации
+  DateTimeColumn get updatedAt => dateTime().nullable()();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -98,5 +99,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'edu_att_local_db'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Nullable INTEGER: существующие строки получают NULL, новые — DateTime.now() через toCompanion
+        // customStatement — метод AppDatabase, доступен через замыкание
+        await customStatement(
+          'ALTER TABLE lesson_attendances ADD COLUMN updated_at INTEGER',
+        );
+      }
+    },
+  );
 }

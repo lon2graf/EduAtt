@@ -187,6 +187,11 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
               ),
             ],
           ),
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Расписание',
+            onPressed: () => context.push('/schedule'),
+          ),
         ],
       ),
     );

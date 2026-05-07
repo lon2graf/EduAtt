@@ -2456,6 +2456,17 @@ class $LessonAttendancesTable extends LessonAttendances
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2463,6 +2474,7 @@ class $LessonAttendancesTable extends LessonAttendances
     studentId,
     status,
     isSynced,
+    updatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2509,6 +2521,12 @@ class $LessonAttendancesTable extends LessonAttendances
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
       );
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -2542,6 +2560,10 @@ class $LessonAttendancesTable extends LessonAttendances
             DriftSqlType.bool,
             data['${effectivePrefix}is_synced'],
           )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
     );
   }
 
@@ -2558,12 +2580,14 @@ class LessonAttendance extends DataClass
   final String studentId;
   final String? status;
   final bool isSynced;
+  final DateTime? updatedAt;
   const LessonAttendance({
     required this.id,
     required this.lessonId,
     required this.studentId,
     this.status,
     required this.isSynced,
+    this.updatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2575,6 +2599,9 @@ class LessonAttendance extends DataClass
       map['status'] = Variable<String>(status);
     }
     map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
     return map;
   }
 
@@ -2586,6 +2613,10 @@ class LessonAttendance extends DataClass
       status:
           status == null && nullToAbsent ? const Value.absent() : Value(status),
       isSynced: Value(isSynced),
+      updatedAt:
+          updatedAt == null && nullToAbsent
+              ? const Value.absent()
+              : Value(updatedAt),
     );
   }
 
@@ -2600,6 +2631,7 @@ class LessonAttendance extends DataClass
       studentId: serializer.fromJson<String>(json['studentId']),
       status: serializer.fromJson<String?>(json['status']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
   }
   @override
@@ -2611,6 +2643,7 @@ class LessonAttendance extends DataClass
       'studentId': serializer.toJson<String>(studentId),
       'status': serializer.toJson<String?>(status),
       'isSynced': serializer.toJson<bool>(isSynced),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
   }
 
@@ -2620,12 +2653,14 @@ class LessonAttendance extends DataClass
     String? studentId,
     Value<String?> status = const Value.absent(),
     bool? isSynced,
+    Value<DateTime?> updatedAt = const Value.absent(),
   }) => LessonAttendance(
     id: id ?? this.id,
     lessonId: lessonId ?? this.lessonId,
     studentId: studentId ?? this.studentId,
     status: status.present ? status.value : this.status,
     isSynced: isSynced ?? this.isSynced,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
   );
   LessonAttendance copyWithCompanion(LessonAttendancesCompanion data) {
     return LessonAttendance(
@@ -2634,6 +2669,7 @@ class LessonAttendance extends DataClass
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
       status: data.status.present ? data.status.value : this.status,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -2644,13 +2680,15 @@ class LessonAttendance extends DataClass
           ..write('lessonId: $lessonId, ')
           ..write('studentId: $studentId, ')
           ..write('status: $status, ')
-          ..write('isSynced: $isSynced')
+          ..write('isSynced: $isSynced, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, lessonId, studentId, status, isSynced);
+  int get hashCode =>
+      Object.hash(id, lessonId, studentId, status, isSynced, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2659,7 +2697,8 @@ class LessonAttendance extends DataClass
           other.lessonId == this.lessonId &&
           other.studentId == this.studentId &&
           other.status == this.status &&
-          other.isSynced == this.isSynced);
+          other.isSynced == this.isSynced &&
+          other.updatedAt == this.updatedAt);
 }
 
 class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
@@ -2668,6 +2707,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
   final Value<String> studentId;
   final Value<String?> status;
   final Value<bool> isSynced;
+  final Value<DateTime?> updatedAt;
   final Value<int> rowid;
   const LessonAttendancesCompanion({
     this.id = const Value.absent(),
@@ -2675,6 +2715,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     this.studentId = const Value.absent(),
     this.status = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LessonAttendancesCompanion.insert({
@@ -2683,6 +2724,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     required String studentId,
     this.status = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        lessonId = Value(lessonId),
@@ -2693,6 +2735,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     Expression<String>? studentId,
     Expression<String>? status,
     Expression<bool>? isSynced,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2701,6 +2744,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
       if (studentId != null) 'student_id': studentId,
       if (status != null) 'status': status,
       if (isSynced != null) 'is_synced': isSynced,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2711,6 +2755,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     Value<String>? studentId,
     Value<String?>? status,
     Value<bool>? isSynced,
+    Value<DateTime?>? updatedAt,
     Value<int>? rowid,
   }) {
     return LessonAttendancesCompanion(
@@ -2719,6 +2764,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
       studentId: studentId ?? this.studentId,
       status: status ?? this.status,
       isSynced: isSynced ?? this.isSynced,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2741,6 +2787,9 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2755,6 +2804,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
           ..write('studentId: $studentId, ')
           ..write('status: $status, ')
           ..write('isSynced: $isSynced, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6183,6 +6233,7 @@ typedef $$LessonAttendancesTableCreateCompanionBuilder =
       required String studentId,
       Value<String?> status,
       Value<bool> isSynced,
+      Value<DateTime?> updatedAt,
       Value<int> rowid,
     });
 typedef $$LessonAttendancesTableUpdateCompanionBuilder =
@@ -6192,6 +6243,7 @@ typedef $$LessonAttendancesTableUpdateCompanionBuilder =
       Value<String> studentId,
       Value<String?> status,
       Value<bool> isSynced,
+      Value<DateTime?> updatedAt,
       Value<int> rowid,
     });
 
@@ -6271,6 +6323,11 @@ class $$LessonAttendancesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$LessonsTableFilterComposer get lessonId {
     final $$LessonsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -6342,6 +6399,11 @@ class $$LessonAttendancesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$LessonsTableOrderingComposer get lessonId {
     final $$LessonsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6406,6 +6468,9 @@ class $$LessonAttendancesTableAnnotationComposer
 
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   $$LessonsTableAnnotationComposer get lessonId {
     final $$LessonsTableAnnotationComposer composer = $composerBuilder(
@@ -6498,6 +6563,7 @@ class $$LessonAttendancesTableTableManager
                 Value<String> studentId = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonAttendancesCompanion(
                 id: id,
@@ -6505,6 +6571,7 @@ class $$LessonAttendancesTableTableManager
                 studentId: studentId,
                 status: status,
                 isSynced: isSynced,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6514,6 +6581,7 @@ class $$LessonAttendancesTableTableManager
                 required String studentId,
                 Value<String?> status = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonAttendancesCompanion.insert(
                 id: id,
@@ -6521,6 +6589,7 @@ class $$LessonAttendancesTableTableManager
                 studentId: studentId,
                 status: status,
                 isSynced: isSynced,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper:

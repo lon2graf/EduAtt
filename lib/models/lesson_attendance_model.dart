@@ -146,6 +146,7 @@ class LessonAttendanceModel {
       studentId: Value(studentId),
       status: Value(status?.toDbValue),
       isSynced: Value(isSynced),
+      updatedAt: Value(DateTime.now()),
     );
   }
 }

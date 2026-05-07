@@ -10,6 +10,7 @@ import 'package:edu_att/screens/student/lesson_attendance_mark_screen.dart';
 import 'package:edu_att/screens/teacher/teacher_attendance_mark_screen.dart';
 import 'package:edu_att/screens/student/subject_absences_screen.dart';
 import 'package:edu_att/screens/lesson_chat_screen.dart';
+import 'package:edu_att/screens/schedule_screen.dart';
 
 // Глобальная переменная роутера
 final GoRouter appRouter = GoRouter(
@@ -50,6 +51,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/lesson_chat',
       builder: (context, state) => const LessonChatScreen(),
+    ),
+    GoRoute(
+      path: '/schedule',
+      builder: (context, state) => const ScheduleScreen(),
     ),
   ],
 );
