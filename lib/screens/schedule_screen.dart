@@ -6,8 +6,6 @@ import 'package:edu_att/models/schedule_model.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
-import 'package:edu_att/utils/data_result.dart';
-import 'package:edu_att/utils/edu_snack_bar.dart';
 
 // Короткие названия дней недели (DateTime.weekday: 1=Пн … 7=Вс)
 const _kWeekdayNames = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -32,26 +30,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSchedule());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initStream());
   }
 
-  Future<void> _loadSchedule() async {
+  Future<void> _initStream() async {
     final teacher = ref.read(teacherProvider);
     final student = ref.read(currentStudentProvider);
-
     final notifier = ref.read(scheduleProvider.notifier);
-    DataResult result;
 
     if (teacher != null && teacher.id != null) {
-      result = await notifier.loadForTeacher(teacher.id!);
+      await notifier.initTeacherScheduleStream(teacher.id!);
     } else if (student != null) {
-      result = await notifier.loadForStudent(student.groupId);
-    } else {
-      return;
+      await notifier.initScheduleStream(student.groupId);
     }
-
-    if (mounted) EduSnackBar.showFromDataResult(context, ref, result);
   }
+
+  Future<void> _onRefresh() =>
+      ref.read(scheduleProvider.notifier).syncSchedule();
 
   /// Первый день текущей отображаемой недели (Понедельник)
   DateTime get _weekStart {
@@ -92,7 +87,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             onNextWeek: () => setState(() => _weekOffset++),
           ),
           const Divider(height: 1),
-          Expanded(child: _ScheduleBody(state: state)),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: _ScheduleBody(state: state),
+            ),
+          ),
         ],
       ),
     );
@@ -243,27 +243,29 @@ class _ScheduleBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     final items = state.schedulesForDay;
 
     if (items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            EduMascot(state: MascotState.empty, height: 120),
-            const SizedBox(height: 16),
-            Text(
-              'Занятий в этот день нет',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+      // Wrap in ListView so RefreshIndicator can trigger on empty state.
+      return ListView(
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                EduMascot(state: MascotState.empty, height: 120),
+                const SizedBox(height: 16),
+                Text(
+                  'Занятий в этот день нет',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 

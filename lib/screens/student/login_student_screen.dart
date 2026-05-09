@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +25,79 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
   final passwordController = TextEditingController();
 
   String? selectedInstitutionId;
+  bool _isSyncing = false;
+  String _syncMessage = 'Подключение...';
+  MascotState _mascotState = MascotState.searching;
+  Timer? _mascotTimer;
+
+  @override
+  void dispose() {
+    _mascotTimer?.cancel();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  void _startSyncOverlay() {
+    _mascotTimer?.cancel();
+    setState(() {
+      _isSyncing = true;
+      _mascotState = MascotState.searching;
+      _syncMessage = 'Подключение к серверу...';
+    });
+    _mascotTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) {
+        setState(() {
+          _mascotState = _mascotState == MascotState.searching
+              ? MascotState.updating
+              : MascotState.searching;
+        });
+      }
+    });
+  }
+
+  void _stopSyncOverlay() {
+    _mascotTimer?.cancel();
+    _mascotTimer = null;
+    if (mounted) setState(() => _isSyncing = false);
+  }
+
+  Future<void> _handleLogin() async {
+    if (selectedInstitutionId == null) {
+      EduSnackBar.showInfo(context, ref, 'Выберите организацию');
+      return;
+    }
+
+    _startSyncOverlay();
+
+    final success = await ref.read(currentStudentProvider.notifier).login(
+      selectedInstitutionId!,
+      emailController.text.trim(),
+      passwordController.text.trim(),
+      onProgress: (msg) {
+        if (mounted) setState(() => _syncMessage = msg);
+      },
+    );
+
+    _stopSyncOverlay();
+
+    if (!mounted) return;
+
+    if (!success) {
+      EduSnackBar.showError(context, ref, 'Неверный логин или пароль');
+      return;
+    }
+
+    final student = ref.read(currentStudentProvider);
+    if (student != null) {
+      await ref.read(attendanceProvider.notifier).initStudentStream(student.id!);
+      await ref.read(currentLessonProvider.notifier).loadCurrentLesson(student.groupId);
+
+      if (!mounted) return;
+      EduSnackBar.showGreeting(context, ref, student.name);
+      context.go('/student/home');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +108,6 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
     final institutionsAsync = ref.watch(institutionsProvider);
 
     return Scaffold(
-      // backgroundColor теперь берется автоматически из темы
       body: Stack(
         children: [
           SafeArea(
@@ -43,13 +117,11 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Маскот Фрося приветствует
                     const EduMascot(state: MascotState.greeting, height: 120),
                     const SizedBox(height: 24),
                     Text(
                       'Вход студента',
                       style: TextStyle(
-                        // Фиолетовый в светлой теме, белый в темной
                         color: isDark ? Colors.white : colorScheme.primary,
                         fontSize: 34,
                         fontWeight: FontWeight.bold,
@@ -58,19 +130,14 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // -----------------------------
-                    // DROPDOWN INSTITUTIONS
-                    // -----------------------------
                     institutionsAsync.when(
-                      data:
-                          (institutions) =>
-                              _buildInstitutionDropdown(context, institutions),
+                      data: (institutions) =>
+                          _buildInstitutionDropdown(context, institutions),
                       loading: () => const SizedBox(height: 54),
-                      error:
-                          (_, __) => Text(
-                            "Ошибка загрузки организаций",
-                            style: TextStyle(color: colorScheme.error),
-                          ),
+                      error: (_, __) => Text(
+                        "Ошибка загрузки организаций",
+                        style: TextStyle(color: colorScheme.error),
+                      ),
                     ),
 
                     const SizedBox(height: 18),
@@ -100,8 +167,7 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                         child: Text(
                           'Назад в главное меню',
                           style: TextStyle(
-                            color:
-                                isDark ? Colors.white60 : colorScheme.primary,
+                            color: isDark ? Colors.white60 : colorScheme.primary,
                             fontSize: 15,
                             decoration: TextDecoration.underline,
                           ),
@@ -109,20 +175,15 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                       ),
                     ),
 
-                    // Секретная кнопка (теперь полностью прозрачная и не мешает)
-                    // В самом низу Column
                     GestureDetector(
                       onTap: () {
                         setState(
-                          () =>
-                              selectedInstitutionId =
-                                  '761584a9-07a1-4e5f-9549-7911ab5bc1b5',
+                          () => selectedInstitutionId =
+                              '761584a9-07a1-4e5f-9549-7911ab5bc1b5',
                         );
-                        emailController.text =
-                            'ivanova_v@mpcit.ru'; // или ivanova_v для студентов
+                        emailController.text = 'ivanova_v@mpcit.ru';
                         passwordController.text = 'myhash_s3';
                       },
-                      // Используем Container с прозрачным цветом, чтобы нажатия гарантированно проходили
                       child: Container(
                         height: 50,
                         width: double.infinity,
@@ -135,8 +196,37 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
             ),
           ),
 
-          // FULLSCREEN LOADING OVERLAY
-          if (institutionsAsync.isLoading)
+          // Оверлей синхронизации
+          if (_isSyncing)
+            Container(
+              color: colorScheme.surface.withOpacity(0.95),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EduMascot(state: _mascotState, height: 140),
+                    const SizedBox(height: 20),
+                    Text(
+                      _syncMessage,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: 220,
+                      child: LinearProgressIndicator(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Оверлей загрузки организаций
+          if (institutionsAsync.isLoading && !_isSyncing)
             Container(
               color: Colors.black.withOpacity(0.5),
               child: const Center(
@@ -163,18 +253,17 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
           style: TextStyle(color: theme.hintColor),
         ),
         value: selectedInstitutionId,
-        items:
-            institutions
-                .map(
-                  (inst) => DropdownMenuItem(
-                    value: inst.id!,
-                    child: Text(
-                      inst.name,
-                      style: TextStyle(color: colorScheme.onSurface),
-                    ),
-                  ),
-                )
-                .toList(),
+        items: institutions
+            .map(
+              (inst) => DropdownMenuItem(
+                value: inst.id!,
+                child: Text(
+                  inst.name,
+                  style: TextStyle(color: colorScheme.onSurface),
+                ),
+              ),
+            )
+            .toList(),
         onChanged: (value) => setState(() => selectedInstitutionId = value),
         buttonStyleData: ButtonStyleData(
           height: 54,
@@ -239,38 +328,7 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
       width: 260,
       height: 56,
       child: ElevatedButton(
-        onPressed: () async {
-          if (selectedInstitutionId == null) {
-            EduSnackBar.showInfo(context, ref, "Выберите организацию");
-            return;
-          }
-
-          final success = await ref
-              .read(currentStudentProvider.notifier)
-              .login(
-                selectedInstitutionId!,
-                emailController.text.trim(),
-                passwordController.text.trim(),
-              );
-
-          if (success && mounted) {
-            final student = ref.read(currentStudentProvider);
-            if (student != null) {
-              await ref
-                  .read(attendanceProvider.notifier)
-                  .loadStudentAttendances(student.id!);
-              await ref
-                  .read(currentLessonProvider.notifier)
-                  .loadCurrentLesson(student.groupId);
-
-              EduSnackBar.showGreeting(context, ref, student.name);
-
-              context.go('/student/home');
-            }
-          } else if (mounted) {
-            EduSnackBar.showError(context, ref, 'Неверный логин или пароль');
-          }
-        },
+        onPressed: _isSyncing ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,

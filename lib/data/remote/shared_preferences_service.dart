@@ -5,6 +5,7 @@ class SharedPreferencesService {
   static const String _studentLoginKey = 'student_login';
   static const String _studentPasswordKey = 'student_password';
   static const String _studentInstitutionKey = 'student_institution';
+  static const String _studentIdKey = 'student_id';
   static const String _teacherLoginKey = 'teacher_login';
   static const String _teacherPasswordKey = 'teacher_password';
   static const String _teacherInstitutionKey = 'teacher_institution';
@@ -25,6 +26,16 @@ class SharedPreferencesService {
     await prefs.setString(_studentPasswordKey, password);
     await prefs.setString(_studentInstitutionKey, institutionId);
     await prefs.setString(_userTypeKey, 'student');
+  }
+
+  static Future<void> saveStudentId(String id) async {
+    final prefs = await _instance;
+    await prefs.setString(_studentIdKey, id);
+  }
+
+  static Future<String?> getStudentId() async {
+    final prefs = await _instance;
+    return prefs.getString(_studentIdKey);
   }
 
   static Future<Map<String, String>?> getStudentCredentials() async {
@@ -94,6 +105,7 @@ class SharedPreferencesService {
     await prefs.remove(_studentLoginKey);
     await prefs.remove(_studentPasswordKey);
     await prefs.remove(_studentInstitutionKey);
+    await prefs.remove(_studentIdKey);
     await prefs.remove(_teacherLoginKey);
     await prefs.remove(_teacherPasswordKey);
     await prefs.remove(_teacherInstitutionKey);

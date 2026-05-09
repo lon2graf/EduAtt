@@ -1592,6 +1592,18 @@ class $SchedulesTable extends Schedules
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _serverUpdatedAtMeta = const VerificationMeta(
+    'serverUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> serverUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'server_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1603,6 +1615,7 @@ class $SchedulesTable extends Schedules
     teacherId,
     date,
     weekday,
+    serverUpdatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1688,6 +1701,15 @@ class $SchedulesTable extends Schedules
     } else if (isInserting) {
       context.missing(_weekdayMeta);
     }
+    if (data.containsKey('server_updated_at')) {
+      context.handle(
+        _serverUpdatedAtMeta,
+        serverUpdatedAt.isAcceptableOrUnknown(
+          data['server_updated_at']!,
+          _serverUpdatedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1742,6 +1764,10 @@ class $SchedulesTable extends Schedules
             DriftSqlType.int,
             data['${effectivePrefix}weekday'],
           )!,
+      serverUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}server_updated_at'],
+      ),
     );
   }
 
@@ -1761,6 +1787,7 @@ class Schedule extends DataClass implements Insertable<Schedule> {
   final String teacherId;
   final DateTime date;
   final int weekday;
+  final DateTime? serverUpdatedAt;
   const Schedule({
     required this.id,
     required this.institutionId,
@@ -1771,6 +1798,7 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     required this.teacherId,
     required this.date,
     required this.weekday,
+    this.serverUpdatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1784,6 +1812,9 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     map['teacher_id'] = Variable<String>(teacherId);
     map['date'] = Variable<DateTime>(date);
     map['weekday'] = Variable<int>(weekday);
+    if (!nullToAbsent || serverUpdatedAt != null) {
+      map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt);
+    }
     return map;
   }
 
@@ -1798,6 +1829,10 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       teacherId: Value(teacherId),
       date: Value(date),
       weekday: Value(weekday),
+      serverUpdatedAt:
+          serverUpdatedAt == null && nullToAbsent
+              ? const Value.absent()
+              : Value(serverUpdatedAt),
     );
   }
 
@@ -1816,6 +1851,7 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       teacherId: serializer.fromJson<String>(json['teacherId']),
       date: serializer.fromJson<DateTime>(json['date']),
       weekday: serializer.fromJson<int>(json['weekday']),
+      serverUpdatedAt: serializer.fromJson<DateTime?>(json['serverUpdatedAt']),
     );
   }
   @override
@@ -1831,6 +1867,7 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       'teacherId': serializer.toJson<String>(teacherId),
       'date': serializer.toJson<DateTime>(date),
       'weekday': serializer.toJson<int>(weekday),
+      'serverUpdatedAt': serializer.toJson<DateTime?>(serverUpdatedAt),
     };
   }
 
@@ -1844,6 +1881,7 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     String? teacherId,
     DateTime? date,
     int? weekday,
+    Value<DateTime?> serverUpdatedAt = const Value.absent(),
   }) => Schedule(
     id: id ?? this.id,
     institutionId: institutionId ?? this.institutionId,
@@ -1854,6 +1892,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     teacherId: teacherId ?? this.teacherId,
     date: date ?? this.date,
     weekday: weekday ?? this.weekday,
+    serverUpdatedAt:
+        serverUpdatedAt.present ? serverUpdatedAt.value : this.serverUpdatedAt,
   );
   Schedule copyWithCompanion(SchedulesCompanion data) {
     return Schedule(
@@ -1869,6 +1909,10 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       teacherId: data.teacherId.present ? data.teacherId.value : this.teacherId,
       date: data.date.present ? data.date.value : this.date,
       weekday: data.weekday.present ? data.weekday.value : this.weekday,
+      serverUpdatedAt:
+          data.serverUpdatedAt.present
+              ? data.serverUpdatedAt.value
+              : this.serverUpdatedAt,
     );
   }
 
@@ -1883,7 +1927,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
           ..write('endTime: $endTime, ')
           ..write('teacherId: $teacherId, ')
           ..write('date: $date, ')
-          ..write('weekday: $weekday')
+          ..write('weekday: $weekday, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt')
           ..write(')'))
         .toString();
   }
@@ -1899,6 +1944,7 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     teacherId,
     date,
     weekday,
+    serverUpdatedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1912,7 +1958,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
           other.endTime == this.endTime &&
           other.teacherId == this.teacherId &&
           other.date == this.date &&
-          other.weekday == this.weekday);
+          other.weekday == this.weekday &&
+          other.serverUpdatedAt == this.serverUpdatedAt);
 }
 
 class SchedulesCompanion extends UpdateCompanion<Schedule> {
@@ -1925,6 +1972,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
   final Value<String> teacherId;
   final Value<DateTime> date;
   final Value<int> weekday;
+  final Value<DateTime?> serverUpdatedAt;
   final Value<int> rowid;
   const SchedulesCompanion({
     this.id = const Value.absent(),
@@ -1936,6 +1984,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     this.teacherId = const Value.absent(),
     this.date = const Value.absent(),
     this.weekday = const Value.absent(),
+    this.serverUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SchedulesCompanion.insert({
@@ -1948,6 +1997,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     required String teacherId,
     required DateTime date,
     required int weekday,
+    this.serverUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        institutionId = Value(institutionId),
@@ -1968,6 +2018,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     Expression<String>? teacherId,
     Expression<DateTime>? date,
     Expression<int>? weekday,
+    Expression<DateTime>? serverUpdatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1980,6 +2031,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
       if (teacherId != null) 'teacher_id': teacherId,
       if (date != null) 'date': date,
       if (weekday != null) 'weekday': weekday,
+      if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1994,6 +2046,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     Value<String>? teacherId,
     Value<DateTime>? date,
     Value<int>? weekday,
+    Value<DateTime?>? serverUpdatedAt,
     Value<int>? rowid,
   }) {
     return SchedulesCompanion(
@@ -2006,6 +2059,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
       teacherId: teacherId ?? this.teacherId,
       date: date ?? this.date,
       weekday: weekday ?? this.weekday,
+      serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2040,6 +2094,9 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     if (weekday.present) {
       map['weekday'] = Variable<int>(weekday.value);
     }
+    if (serverUpdatedAt.present) {
+      map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2058,6 +2115,7 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
           ..write('teacherId: $teacherId, ')
           ..write('date: $date, ')
           ..write('weekday: $weekday, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2112,12 +2170,25 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _serverUpdatedAtMeta = const VerificationMeta(
+    'serverUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> serverUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'server_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     scheduleId,
     topic,
     attendanceStatus,
+    serverUpdatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2161,6 +2232,15 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
     } else if (isInserting) {
       context.missing(_attendanceStatusMeta);
     }
+    if (data.containsKey('server_updated_at')) {
+      context.handle(
+        _serverUpdatedAtMeta,
+        serverUpdatedAt.isAcceptableOrUnknown(
+          data['server_updated_at']!,
+          _serverUpdatedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2189,6 +2269,10 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
             DriftSqlType.string,
             data['${effectivePrefix}attendance_status'],
           )!,
+      serverUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}server_updated_at'],
+      ),
     );
   }
 
@@ -2203,11 +2287,13 @@ class Lesson extends DataClass implements Insertable<Lesson> {
   final String scheduleId;
   final String? topic;
   final String attendanceStatus;
+  final DateTime? serverUpdatedAt;
   const Lesson({
     required this.id,
     required this.scheduleId,
     this.topic,
     required this.attendanceStatus,
+    this.serverUpdatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2218,6 +2304,9 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       map['topic'] = Variable<String>(topic);
     }
     map['attendance_status'] = Variable<String>(attendanceStatus);
+    if (!nullToAbsent || serverUpdatedAt != null) {
+      map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt);
+    }
     return map;
   }
 
@@ -2228,6 +2317,10 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       topic:
           topic == null && nullToAbsent ? const Value.absent() : Value(topic),
       attendanceStatus: Value(attendanceStatus),
+      serverUpdatedAt:
+          serverUpdatedAt == null && nullToAbsent
+              ? const Value.absent()
+              : Value(serverUpdatedAt),
     );
   }
 
@@ -2241,6 +2334,7 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       scheduleId: serializer.fromJson<String>(json['scheduleId']),
       topic: serializer.fromJson<String?>(json['topic']),
       attendanceStatus: serializer.fromJson<String>(json['attendanceStatus']),
+      serverUpdatedAt: serializer.fromJson<DateTime?>(json['serverUpdatedAt']),
     );
   }
   @override
@@ -2251,6 +2345,7 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       'scheduleId': serializer.toJson<String>(scheduleId),
       'topic': serializer.toJson<String?>(topic),
       'attendanceStatus': serializer.toJson<String>(attendanceStatus),
+      'serverUpdatedAt': serializer.toJson<DateTime?>(serverUpdatedAt),
     };
   }
 
@@ -2259,11 +2354,14 @@ class Lesson extends DataClass implements Insertable<Lesson> {
     String? scheduleId,
     Value<String?> topic = const Value.absent(),
     String? attendanceStatus,
+    Value<DateTime?> serverUpdatedAt = const Value.absent(),
   }) => Lesson(
     id: id ?? this.id,
     scheduleId: scheduleId ?? this.scheduleId,
     topic: topic.present ? topic.value : this.topic,
     attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+    serverUpdatedAt:
+        serverUpdatedAt.present ? serverUpdatedAt.value : this.serverUpdatedAt,
   );
   Lesson copyWithCompanion(LessonsCompanion data) {
     return Lesson(
@@ -2275,6 +2373,10 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           data.attendanceStatus.present
               ? data.attendanceStatus.value
               : this.attendanceStatus,
+      serverUpdatedAt:
+          data.serverUpdatedAt.present
+              ? data.serverUpdatedAt.value
+              : this.serverUpdatedAt,
     );
   }
 
@@ -2284,13 +2386,15 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           ..write('id: $id, ')
           ..write('scheduleId: $scheduleId, ')
           ..write('topic: $topic, ')
-          ..write('attendanceStatus: $attendanceStatus')
+          ..write('attendanceStatus: $attendanceStatus, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, scheduleId, topic, attendanceStatus);
+  int get hashCode =>
+      Object.hash(id, scheduleId, topic, attendanceStatus, serverUpdatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2298,7 +2402,8 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           other.id == this.id &&
           other.scheduleId == this.scheduleId &&
           other.topic == this.topic &&
-          other.attendanceStatus == this.attendanceStatus);
+          other.attendanceStatus == this.attendanceStatus &&
+          other.serverUpdatedAt == this.serverUpdatedAt);
 }
 
 class LessonsCompanion extends UpdateCompanion<Lesson> {
@@ -2306,12 +2411,14 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
   final Value<String> scheduleId;
   final Value<String?> topic;
   final Value<String> attendanceStatus;
+  final Value<DateTime?> serverUpdatedAt;
   final Value<int> rowid;
   const LessonsCompanion({
     this.id = const Value.absent(),
     this.scheduleId = const Value.absent(),
     this.topic = const Value.absent(),
     this.attendanceStatus = const Value.absent(),
+    this.serverUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LessonsCompanion.insert({
@@ -2319,6 +2426,7 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     required String scheduleId,
     this.topic = const Value.absent(),
     required String attendanceStatus,
+    this.serverUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        scheduleId = Value(scheduleId),
@@ -2328,6 +2436,7 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     Expression<String>? scheduleId,
     Expression<String>? topic,
     Expression<String>? attendanceStatus,
+    Expression<DateTime>? serverUpdatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2335,6 +2444,7 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
       if (scheduleId != null) 'schedule_id': scheduleId,
       if (topic != null) 'topic': topic,
       if (attendanceStatus != null) 'attendance_status': attendanceStatus,
+      if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2344,6 +2454,7 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     Value<String>? scheduleId,
     Value<String?>? topic,
     Value<String>? attendanceStatus,
+    Value<DateTime?>? serverUpdatedAt,
     Value<int>? rowid,
   }) {
     return LessonsCompanion(
@@ -2351,6 +2462,7 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
       scheduleId: scheduleId ?? this.scheduleId,
       topic: topic ?? this.topic,
       attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+      serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2370,6 +2482,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     if (attendanceStatus.present) {
       map['attendance_status'] = Variable<String>(attendanceStatus.value);
     }
+    if (serverUpdatedAt.present) {
+      map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2383,6 +2498,7 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
           ..write('scheduleId: $scheduleId, ')
           ..write('topic: $topic, ')
           ..write('attendanceStatus: $attendanceStatus, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2467,6 +2583,18 @@ class $LessonAttendancesTable extends LessonAttendances
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _serverUpdatedAtMeta = const VerificationMeta(
+    'serverUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> serverUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'server_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2475,6 +2603,7 @@ class $LessonAttendancesTable extends LessonAttendances
     status,
     isSynced,
     updatedAt,
+    serverUpdatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2527,6 +2656,15 @@ class $LessonAttendancesTable extends LessonAttendances
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('server_updated_at')) {
+      context.handle(
+        _serverUpdatedAtMeta,
+        serverUpdatedAt.isAcceptableOrUnknown(
+          data['server_updated_at']!,
+          _serverUpdatedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2564,6 +2702,10 @@ class $LessonAttendancesTable extends LessonAttendances
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      serverUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}server_updated_at'],
+      ),
     );
   }
 
@@ -2581,6 +2723,7 @@ class LessonAttendance extends DataClass
   final String? status;
   final bool isSynced;
   final DateTime? updatedAt;
+  final DateTime? serverUpdatedAt;
   const LessonAttendance({
     required this.id,
     required this.lessonId,
@@ -2588,6 +2731,7 @@ class LessonAttendance extends DataClass
     this.status,
     required this.isSynced,
     this.updatedAt,
+    this.serverUpdatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2601,6 +2745,9 @@ class LessonAttendance extends DataClass
     map['is_synced'] = Variable<bool>(isSynced);
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || serverUpdatedAt != null) {
+      map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt);
     }
     return map;
   }
@@ -2617,6 +2764,10 @@ class LessonAttendance extends DataClass
           updatedAt == null && nullToAbsent
               ? const Value.absent()
               : Value(updatedAt),
+      serverUpdatedAt:
+          serverUpdatedAt == null && nullToAbsent
+              ? const Value.absent()
+              : Value(serverUpdatedAt),
     );
   }
 
@@ -2632,6 +2783,7 @@ class LessonAttendance extends DataClass
       status: serializer.fromJson<String?>(json['status']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      serverUpdatedAt: serializer.fromJson<DateTime?>(json['serverUpdatedAt']),
     );
   }
   @override
@@ -2644,6 +2796,7 @@ class LessonAttendance extends DataClass
       'status': serializer.toJson<String?>(status),
       'isSynced': serializer.toJson<bool>(isSynced),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'serverUpdatedAt': serializer.toJson<DateTime?>(serverUpdatedAt),
     };
   }
 
@@ -2654,6 +2807,7 @@ class LessonAttendance extends DataClass
     Value<String?> status = const Value.absent(),
     bool? isSynced,
     Value<DateTime?> updatedAt = const Value.absent(),
+    Value<DateTime?> serverUpdatedAt = const Value.absent(),
   }) => LessonAttendance(
     id: id ?? this.id,
     lessonId: lessonId ?? this.lessonId,
@@ -2661,6 +2815,8 @@ class LessonAttendance extends DataClass
     status: status.present ? status.value : this.status,
     isSynced: isSynced ?? this.isSynced,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    serverUpdatedAt:
+        serverUpdatedAt.present ? serverUpdatedAt.value : this.serverUpdatedAt,
   );
   LessonAttendance copyWithCompanion(LessonAttendancesCompanion data) {
     return LessonAttendance(
@@ -2670,6 +2826,10 @@ class LessonAttendance extends DataClass
       status: data.status.present ? data.status.value : this.status,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      serverUpdatedAt:
+          data.serverUpdatedAt.present
+              ? data.serverUpdatedAt.value
+              : this.serverUpdatedAt,
     );
   }
 
@@ -2681,14 +2841,22 @@ class LessonAttendance extends DataClass
           ..write('studentId: $studentId, ')
           ..write('status: $status, ')
           ..write('isSynced: $isSynced, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, lessonId, studentId, status, isSynced, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    lessonId,
+    studentId,
+    status,
+    isSynced,
+    updatedAt,
+    serverUpdatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2698,7 +2866,8 @@ class LessonAttendance extends DataClass
           other.studentId == this.studentId &&
           other.status == this.status &&
           other.isSynced == this.isSynced &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.serverUpdatedAt == this.serverUpdatedAt);
 }
 
 class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
@@ -2708,6 +2877,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
   final Value<String?> status;
   final Value<bool> isSynced;
   final Value<DateTime?> updatedAt;
+  final Value<DateTime?> serverUpdatedAt;
   final Value<int> rowid;
   const LessonAttendancesCompanion({
     this.id = const Value.absent(),
@@ -2716,6 +2886,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     this.status = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.serverUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LessonAttendancesCompanion.insert({
@@ -2725,6 +2896,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     this.status = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.serverUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        lessonId = Value(lessonId),
@@ -2736,6 +2908,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     Expression<String>? status,
     Expression<bool>? isSynced,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? serverUpdatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2745,6 +2918,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
       if (status != null) 'status': status,
       if (isSynced != null) 'is_synced': isSynced,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2756,6 +2930,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     Value<String?>? status,
     Value<bool>? isSynced,
     Value<DateTime?>? updatedAt,
+    Value<DateTime?>? serverUpdatedAt,
     Value<int>? rowid,
   }) {
     return LessonAttendancesCompanion(
@@ -2765,6 +2940,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
       status: status ?? this.status,
       isSynced: isSynced ?? this.isSynced,
       updatedAt: updatedAt ?? this.updatedAt,
+      serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2790,6 +2966,9 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (serverUpdatedAt.present) {
+      map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2805,6 +2984,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
           ..write('status: $status, ')
           ..write('isSynced: $isSynced, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5059,6 +5239,7 @@ typedef $$SchedulesTableCreateCompanionBuilder =
       required String teacherId,
       required DateTime date,
       required int weekday,
+      Value<DateTime?> serverUpdatedAt,
       Value<int> rowid,
     });
 typedef $$SchedulesTableUpdateCompanionBuilder =
@@ -5072,6 +5253,7 @@ typedef $$SchedulesTableUpdateCompanionBuilder =
       Value<String> teacherId,
       Value<DateTime> date,
       Value<int> weekday,
+      Value<DateTime?> serverUpdatedAt,
       Value<int> rowid,
     });
 
@@ -5205,6 +5387,11 @@ class $$SchedulesTableFilterComposer
 
   ColumnFilters<int> get weekday => $composableBuilder(
     column: $table.weekday,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5360,6 +5547,11 @@ class $$SchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$InstitutionsTableOrderingComposer get institutionId {
     final $$InstitutionsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -5476,6 +5668,11 @@ class $$SchedulesTableAnnotationComposer
 
   GeneratedColumn<int> get weekday =>
       $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => column,
+  );
 
   $$InstitutionsTableAnnotationComposer get institutionId {
     final $$InstitutionsTableAnnotationComposer composer = $composerBuilder(
@@ -5638,6 +5835,7 @@ class $$SchedulesTableTableManager
                 Value<String> teacherId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
                 Value<int> weekday = const Value.absent(),
+                Value<DateTime?> serverUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SchedulesCompanion(
                 id: id,
@@ -5649,6 +5847,7 @@ class $$SchedulesTableTableManager
                 teacherId: teacherId,
                 date: date,
                 weekday: weekday,
+                serverUpdatedAt: serverUpdatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5662,6 +5861,7 @@ class $$SchedulesTableTableManager
                 required String teacherId,
                 required DateTime date,
                 required int weekday,
+                Value<DateTime?> serverUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SchedulesCompanion.insert(
                 id: id,
@@ -5673,6 +5873,7 @@ class $$SchedulesTableTableManager
                 teacherId: teacherId,
                 date: date,
                 weekday: weekday,
+                serverUpdatedAt: serverUpdatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper:
@@ -5825,6 +6026,7 @@ typedef $$LessonsTableCreateCompanionBuilder =
       required String scheduleId,
       Value<String?> topic,
       required String attendanceStatus,
+      Value<DateTime?> serverUpdatedAt,
       Value<int> rowid,
     });
 typedef $$LessonsTableUpdateCompanionBuilder =
@@ -5833,6 +6035,7 @@ typedef $$LessonsTableUpdateCompanionBuilder =
       Value<String> scheduleId,
       Value<String?> topic,
       Value<String> attendanceStatus,
+      Value<DateTime?> serverUpdatedAt,
       Value<int> rowid,
     });
 
@@ -5905,6 +6108,11 @@ class $$LessonsTableFilterComposer
 
   ColumnFilters<String> get attendanceStatus => $composableBuilder(
     column: $table.attendanceStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5981,6 +6189,11 @@ class $$LessonsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SchedulesTableOrderingComposer get scheduleId {
     final $$SchedulesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6022,6 +6235,11 @@ class $$LessonsTableAnnotationComposer
 
   GeneratedColumn<String> get attendanceStatus => $composableBuilder(
     column: $table.attendanceStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
     builder: (column) => column,
   );
 
@@ -6107,12 +6325,14 @@ class $$LessonsTableTableManager
                 Value<String> scheduleId = const Value.absent(),
                 Value<String?> topic = const Value.absent(),
                 Value<String> attendanceStatus = const Value.absent(),
+                Value<DateTime?> serverUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonsCompanion(
                 id: id,
                 scheduleId: scheduleId,
                 topic: topic,
                 attendanceStatus: attendanceStatus,
+                serverUpdatedAt: serverUpdatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6121,12 +6341,14 @@ class $$LessonsTableTableManager
                 required String scheduleId,
                 Value<String?> topic = const Value.absent(),
                 required String attendanceStatus,
+                Value<DateTime?> serverUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonsCompanion.insert(
                 id: id,
                 scheduleId: scheduleId,
                 topic: topic,
                 attendanceStatus: attendanceStatus,
+                serverUpdatedAt: serverUpdatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper:
@@ -6234,6 +6456,7 @@ typedef $$LessonAttendancesTableCreateCompanionBuilder =
       Value<String?> status,
       Value<bool> isSynced,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> serverUpdatedAt,
       Value<int> rowid,
     });
 typedef $$LessonAttendancesTableUpdateCompanionBuilder =
@@ -6244,6 +6467,7 @@ typedef $$LessonAttendancesTableUpdateCompanionBuilder =
       Value<String?> status,
       Value<bool> isSynced,
       Value<DateTime?> updatedAt,
+      Value<DateTime?> serverUpdatedAt,
       Value<int> rowid,
     });
 
@@ -6328,6 +6552,11 @@ class $$LessonAttendancesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$LessonsTableFilterComposer get lessonId {
     final $$LessonsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -6404,6 +6633,11 @@ class $$LessonAttendancesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$LessonsTableOrderingComposer get lessonId {
     final $$LessonsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6471,6 +6705,11 @@ class $$LessonAttendancesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => column,
+  );
 
   $$LessonsTableAnnotationComposer get lessonId {
     final $$LessonsTableAnnotationComposer composer = $composerBuilder(
@@ -6564,6 +6803,7 @@ class $$LessonAttendancesTableTableManager
                 Value<String?> status = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> serverUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonAttendancesCompanion(
                 id: id,
@@ -6572,6 +6812,7 @@ class $$LessonAttendancesTableTableManager
                 status: status,
                 isSynced: isSynced,
                 updatedAt: updatedAt,
+                serverUpdatedAt: serverUpdatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6582,6 +6823,7 @@ class $$LessonAttendancesTableTableManager
                 Value<String?> status = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<DateTime?> serverUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonAttendancesCompanion.insert(
                 id: id,
@@ -6590,6 +6832,7 @@ class $$LessonAttendancesTableTableManager
                 status: status,
                 isSynced: isSynced,
                 updatedAt: updatedAt,
+                serverUpdatedAt: serverUpdatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper:

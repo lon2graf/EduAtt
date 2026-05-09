@@ -1,17 +1,17 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/data/remote/student_service.dart';
-import 'package:edu_att/data/remote/group_service.dart';
+import 'package:edu_att/data/repositories/group_repository.dart';
 import 'package:edu_att/utils/weekly_report_data_preparer.dart';
 import 'package:edu_att/utils/pdf_generator.dart';
 import 'package:printing/printing.dart';
 import 'package:edu_att/models/teacher_model.dart';
 import 'package:edu_att/models/group_model.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
-import 'dart:typed_data';
 
 class TeacherWeeklyReportScreen extends ConsumerStatefulWidget {
   const TeacherWeeklyReportScreen({super.key});
@@ -25,32 +25,42 @@ class _TeacherWeeklyReportScreenState
     extends ConsumerState<TeacherWeeklyReportScreen> {
   String? _selectedGroupId;
   List<GroupModel> _groups = [];
+  StreamSubscription<List<GroupModel>>? _groupSub;
 
   @override
   void initState() {
     super.initState();
-    _loadGroups();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initGroups());
   }
 
-  Future<void> _loadGroups() async {
+  @override
+  void dispose() {
+    _groupSub?.cancel();
+    super.dispose();
+  }
+
+  void _initGroups() {
     final teacher = ref.read(teacherProvider);
     if (teacher == null) return;
 
-    try {
-      final groups = await GroupService.getGroupsByInstitution(
-        teacher.institutionId,
-      );
-      if (mounted) {
-        setState(() {
-          _groups = groups;
-          _selectedGroupId = groups.isNotEmpty ? groups.first.id : null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        EduSnackBar.showError(context, ref, 'Ошибка загрузки групп: $e');
-      }
-    }
+    final repo = ref.read(groupRepositoryProvider);
+
+    // 1. Подписываемся на Drift-стрим (SSoT)
+    _groupSub = repo.watchForInstitution(teacher.institutionId).listen(
+      (groups) {
+        if (mounted) {
+          setState(() {
+            _groups = groups;
+            if (_selectedGroupId == null && groups.isNotEmpty) {
+              _selectedGroupId = groups.first.id;
+            }
+          });
+        }
+      },
+    );
+
+    // 2. Фоновая синхронизация с Supabase
+    repo.syncForInstitution(teacher.institutionId).catchError((_) {});
   }
 
   @override

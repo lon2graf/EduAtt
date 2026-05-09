@@ -68,10 +68,10 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
     if (credentials != null) {
       final success = await ref
           .read(currentStudentProvider.notifier)
-          .login(
-            credentials['institutionId']!,
-            credentials['login']!,
-            credentials['password']!,
+          .autoLogin(
+            institutionId: credentials['institutionId']!,
+            email: credentials['login']!,
+            password: credentials['password']!,
           );
       return success;
     }

@@ -28,6 +28,15 @@ class LessonsAttendanceService extends BaseService {
         .eq('lesson_id', lessonId);
   }
 
+  static Stream<List<Map<String, dynamic>>> getStudentAttendanceStream(
+    String studentId,
+  ) {
+    return BaseService.client
+        .from('lesson_attendances')
+        .stream(primaryKey: ['id'])
+        .eq('student_id', studentId);
+  }
+
   // Метод получения всех посещений студента по его ID
   static Future<List<LessonAttendanceModel>> getAllStudentAttendances(
     String id,

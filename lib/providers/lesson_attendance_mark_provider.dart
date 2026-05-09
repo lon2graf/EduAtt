@@ -1,23 +1,17 @@
 import 'dart:async';
 
-import 'package:edu_att/data/local_db/app_database.dart';
 import 'package:edu_att/data/repositories/attendance_repository.dart';
 import 'package:edu_att/data/repositories/i_attendance_repository.dart';
 import 'package:edu_att/models/attendance_status.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/student_model.dart';
+import 'package:edu_att/providers/app_database_provider.dart';
 import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 // --- Провайдеры инфраструктуры ---
-
-final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
-  ref.onDispose(db.close);
-  return db;
-});
 
 final attendanceRepositoryProvider = Provider<IAttendanceRepository>(
   (ref) => AttendanceRepository(ref.watch(appDatabaseProvider)),

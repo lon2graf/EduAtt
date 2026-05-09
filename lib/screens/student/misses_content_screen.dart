@@ -75,10 +75,14 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                   if (student?.id != null) {
                     await ref
                         .read(attendanceProvider.notifier)
-                        .loadStudentAttendances(student!.id!);
+                        .syncAttendanceDelta(student!.id!);
                   }
                 },
-                child: _buildAttendanceList(context, filteredRecords),
+                child: _buildAttendanceList(
+                  context,
+                  filteredRecords,
+                  allAttendances.isEmpty,
+                ),
               ),
             ),
           ],
@@ -156,6 +160,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   Widget _buildAttendanceList(
     BuildContext context,
     List<LessonAttendanceModel> records,
+    bool noDataAtAll,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -167,7 +172,9 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
             const EduMascot(state: MascotState.empty, height: 180),
             const SizedBox(height: 16),
             Text(
-              'Пропусков нет!\nФрося рада твоей посещаемости!',
+              noDataAtAll
+                  ? 'Оффлайн: данных пока нет'
+                  : 'Пропусков нет!\nФрося рада твоей посещаемости!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,

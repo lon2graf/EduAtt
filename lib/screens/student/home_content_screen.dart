@@ -14,6 +14,8 @@ import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
+import 'package:edu_att/providers/connectivity_provider.dart';
+import 'package:edu_att/providers/schedule_provider.dart';
 
 // Сервисы и Утилиты
 import 'package:edu_att/data/remote/lessons_attendace_service.dart';
@@ -84,6 +86,9 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
+      if (ref.read(offlineModeProvider)) {
+        EduSnackBar.showInfo(context, ref, 'Работаем оффлайн');
+      }
     });
     // Обновляем UI каждую минуту для прогресс-бара
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -102,7 +107,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     if (student != null) {
       await ref
           .read(attendanceProvider.notifier)
-          .loadStudentAttendances(student.id!);
+          .initStudentStream(student.id!);
       await ref
           .read(currentLessonProvider.notifier)
           .loadCurrentLesson(student.groupId);
@@ -129,6 +134,27 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       }
     });
 
+    // Offline/online transitions
+    ref.listen<bool>(isOfflineProvider, (wasOffline, isOffline) {
+      if (isOffline && wasOffline == false) {
+        EduSnackBar.showWaiting(
+          context,
+          ref,
+          'Интернет пропал, но я всё помню! Работаем в оффлайн-режиме',
+        );
+      } else if (!isOffline && wasOffline == true) {
+        final student = ref.read(currentStudentProvider);
+        if (student != null) {
+          ref
+              .read(attendanceProvider.notifier)
+              .syncAttendanceDelta(student.id!);
+          ref.read(scheduleProvider.notifier).syncSchedule();
+        }
+      }
+    });
+
+    final isOffline = ref.watch(isOfflineProvider);
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadInitialData,
@@ -146,7 +172,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             const SizedBox(height: 12),
             // Сама карточка занятия
             lesson != null
-                ? _buildLiveLessonCard(context, lesson, student, allAttendances)
+                ? _buildLiveLessonCard(context, lesson, student, allAttendances, isOffline)
                 : _buildNoLessonState(context),
             const SizedBox(height: 40),
           ],
@@ -263,6 +289,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     LessonModel lesson,
     StudentModel? student,
     List<LessonAttendanceModel> attendances,
+    bool isOffline,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
     double progress = _calculateTimeProgress(lesson.startTime, lesson.endTime);
@@ -359,7 +386,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
 
           const SizedBox(height: 16),
           // Кнопки действий
-          _buildCardActions(context, lesson, student, attendances),
+          _buildCardActions(context, lesson, student, attendances, isOffline),
         ],
       ),
     );
@@ -415,6 +442,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     LessonModel lesson,
     StudentModel? student,
     List<LessonAttendanceModel> attendances,
+    bool isOffline,
   ) {
     if (student == null) return const SizedBox.shrink();
 
@@ -448,7 +476,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
           flex: 5,
           child:
               student.isHeadman
-                  ? _buildHeadmanButton(context, lesson)
+                  ? _buildHeadmanButton(context, lesson, isOffline)
                   : _buildStudentPresenceButton(
                     context,
                     lesson,
@@ -500,14 +528,18 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     );
   }
 
-  Widget _buildHeadmanButton(BuildContext context, LessonModel lesson) {
+  Widget _buildHeadmanButton(BuildContext context, LessonModel lesson, bool isOffline) {
     final colorScheme = Theme.of(context).colorScheme;
     bool isLocked = lesson.status == LessonAttendanceStatus.onTeacherEditing;
 
-    return ElevatedButton.icon(
+    return Opacity(
+      opacity: isOffline ? 0.6 : 1.0,
+      child: ElevatedButton.icon(
       onPressed:
           (isLocked || _isPreparing)
               ? () => isLocked ? EduSnackBar.showForbidden(context, ref) : null
+              : isOffline
+              ? () => EduSnackBar.showInfo(context, ref, 'Для работы с ведомостью нужен интернет')
               : () async {
                 setState(() => _isPreparing = true);
                 try {
@@ -569,12 +601,18 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
               : Icon(
-                isLocked ? Icons.lock_outline : Icons.edit_square,
+                isOffline
+                    ? Icons.cloud_off
+                    : isLocked
+                    ? Icons.lock_outline
+                    : Icons.edit_square,
                 size: 20,
               ),
       label: Text(
         _isPreparing
             ? "ЗАГРУЗКА..."
+            : isOffline
+            ? "ОФФЛАЙН"
             : (isLocked ? "ЗАБЛОКИРОВАНО" : "ПОСЕЩАЕМОСТЬ"),
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
       ),
@@ -585,6 +623,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
       ),
     );
   }

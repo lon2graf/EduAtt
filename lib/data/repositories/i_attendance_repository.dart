@@ -10,6 +10,15 @@ abstract class IAttendanceRepository {
   /// Отправляет все несинхронизированные записи в Supabase и помечает их как synced.
   Future<void> syncToRemote();
 
-  /// Realtime-поток изменений посещаемости из Supabase.
+  /// Realtime-поток изменений посещаемости из Supabase (для экрана преподавателя).
   Stream<List<Map<String, dynamic>>> watchLesson(String lessonId);
+
+  /// Реактивный Drift-стрим посещаемости студента с данными о предмете/учителе.
+  Stream<List<LessonAttendanceModel>> watchStudentAttendance(String studentId);
+
+  /// Delta sync: скачивает из Supabase только записи, изменённые после последней синхронизации.
+  Future<void> syncDelta(String studentId);
+
+  /// Записывает данные из Supabase (real-time или delta) в локальную БД.
+  Future<void> upsertFromRemote(List<Map<String, dynamic>> raw);
 }

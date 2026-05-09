@@ -12,6 +12,8 @@ import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:edu_att/providers/connectivity_provider.dart';
+import 'package:edu_att/providers/schedule_provider.dart';
 
 // --- ВСПОМОГАТЕЛЬНЫЙ ВИДЖЕТ ---
 class LiveIndicator extends StatefulWidget {
@@ -103,6 +105,21 @@ class _TeacherHomeContentScreenState
       }
     });
 
+    // Offline/online transitions
+    ref.listen<bool>(isOfflineProvider, (wasOffline, isOffline) {
+      if (isOffline && wasOffline == false) {
+        EduSnackBar.showWaiting(
+          context,
+          ref,
+          'Интернет пропал, но я всё помню! Работаем в оффлайн-режиме',
+        );
+      } else if (!isOffline && wasOffline == true) {
+        ref.read(scheduleProvider.notifier).syncSchedule();
+      }
+    });
+
+    final isOffline = ref.watch(isOfflineProvider);
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadInitialData,
@@ -132,7 +149,7 @@ class _TeacherHomeContentScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child:
                     lesson != null
-                        ? _buildLiveLessonCard(context, lesson)
+                        ? _buildLiveLessonCard(context, lesson, isOffline)
                         : _buildNoLessonState(context),
               ),
             ),
@@ -179,7 +196,7 @@ class _TeacherHomeContentScreenState
     );
   }
 
-  Widget _buildLiveLessonCard(BuildContext context, LessonModel lesson) {
+  Widget _buildLiveLessonCard(BuildContext context, LessonModel lesson, bool isOffline) {
     final colorScheme = Theme.of(context).colorScheme;
     double progress = _calculateTimeProgress(lesson.startTime, lesson.endTime);
 
@@ -267,7 +284,7 @@ class _TeacherHomeContentScreenState
             ),
           ),
           const SizedBox(height: 24),
-          _buildTeacherActions(context, lesson),
+          _buildTeacherActions(context, lesson, isOffline),
         ],
       ),
     );
@@ -317,7 +334,7 @@ class _TeacherHomeContentScreenState
     );
   }
 
-  Widget _buildTeacherActions(BuildContext context, LessonModel lesson) {
+  Widget _buildTeacherActions(BuildContext context, LessonModel lesson, bool isOffline) {
     return Row(
       children: [
         Expanded(
@@ -337,12 +354,12 @@ class _TeacherHomeContentScreenState
           ),
         ),
         const SizedBox(width: 12),
-        Expanded(flex: 5, child: _buildTeacherMainButton(context, lesson)),
+        Expanded(flex: 5, child: _buildTeacherMainButton(context, lesson, isOffline)),
       ],
     );
   }
 
-  Widget _buildTeacherMainButton(BuildContext context, LessonModel lesson) {
+  Widget _buildTeacherMainButton(BuildContext context, LessonModel lesson, bool isOffline) {
     final colorScheme = Theme.of(context).colorScheme;
     String btnText = 'ПЕРЕКЛИЧКА';
     Color btnTextColor = colorScheme.primary;
@@ -363,8 +380,18 @@ class _TeacherHomeContentScreenState
       icon = Icons.lock_open;
     }
 
-    return ElevatedButton.icon(
-      onPressed: () => _handleTeacherAction(context, lesson, isDanger),
+    if (isOffline) {
+      icon = Icons.cloud_off;
+      btnText = 'ОФФЛАЙН';
+      btnTextColor = Colors.grey.shade600;
+    }
+
+    return Opacity(
+      opacity: isOffline ? 0.6 : 1.0,
+      child: ElevatedButton.icon(
+      onPressed: isOffline
+          ? () => EduSnackBar.showInfo(context, ref, 'Для работы с ведомостью нужен интернет')
+          : () => _handleTeacherAction(context, lesson, isDanger),
       icon: Icon(icon, size: 20),
       label: Text(
         btnText,
@@ -376,6 +403,7 @@ class _TeacherHomeContentScreenState
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
       ),
     );
   }
