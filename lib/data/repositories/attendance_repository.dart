@@ -95,6 +95,32 @@ class AttendanceRepository implements IAttendanceRepository {
   }
 
   @override
+  Future<void> markSelfPresent({
+    required String lessonId,
+    required String studentId,
+  }) =>
+      LessonsAttendanceService.markSelfPresent(
+        lessonId: lessonId,
+        studentId: studentId,
+      );
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchRemoteStudent(String studentId) =>
+      LessonsAttendanceService.getStudentAttendanceStream(studentId);
+
+  @override
+  Future<List<LessonAttendanceModel>> getWeeklyGroupAttendance({
+    required String groupId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) =>
+      LessonsAttendanceService.getWeeklyGroupAttendance(
+        groupId: groupId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+  @override
   Future<void> upsertFromRemote(List<Map<String, dynamic>> raw) async {
     if (raw.isEmpty) return;
     final companions = raw.map(

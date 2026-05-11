@@ -1,74 +1,75 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:edu_att/data/repositories/lesson_repository.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:edu_att/utils/app_logger.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider, Ref;
 import 'package:flutter_riverpod/legacy.dart';
 
-class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
-  CurrentLessonNotifier() : super(null);
+final currentLessonProvider =
+    StateNotifierProvider<CurrentLessonNotifier, LessonModel?>(
+      (ref) => CurrentLessonNotifier(ref.watch(lessonRepositoryProvider)),
+    );
 
-  // Переменная для хранения подписки
+class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
+  final LessonRepository _repository;
   StreamSubscription? _statusSubscription;
 
-  /// Твой основной метод загрузки, теперь с Realtime-фундаментом
-  Future<void> loadCurrentLesson(String groupId) async {
-    // 1. Сначала делаем обычный запрос, как и раньше
-    final lesson = await LessonService.getCurrentLesson(groupId);
-    state = lesson;
+  CurrentLessonNotifier(this._repository) : super(null);
 
-    // 2. Если урок найден, сразу запускаем прослушку его статуса
-    if (lesson != null && lesson.id != null) {
-      _startStatusStream(lesson.id!);
-    }
+  Future<void> loadCurrentLesson(String groupId) async {
+    final lesson = await _repository.getCurrentLesson(groupId);
+    state = lesson;
+    if (lesson?.id != null) _startStatusStream(lesson!.id!);
   }
 
   Future<void> loadCurrentLessonForTeacher(String teacherId) async {
-    final lesson = await LessonService.getCurrentLessonForTeacher(teacherId);
+    final lesson = await _repository.getCurrentLessonForTeacher(teacherId);
     state = lesson;
-
-    if (lesson != null && lesson.id != null) {
-      _startStatusStream(lesson.id!);
-    }
+    if (lesson?.id != null) _startStatusStream(lesson!.id!);
   }
 
-  /// Внутренний метод для запуска Stream
-  void _startStatusStream(String lessonId) {
-    // Отменяем предыдущую подписку, чтобы не плодить утечки памяти
-    _statusSubscription?.cancel();
-
-    _statusSubscription = Supabase.instance.client
-        .from('lessons')
-        .stream(primaryKey: ['id'])
-        .eq('id', lessonId)
-        .listen(
-          (List<Map<String, dynamic>> data) {
-            if (data.isNotEmpty && state != null) {
-              // Парсим статус из базы
-              final newStatusStr = data.first['attendance_status'] as String?;
-              final updatedStatus = LessonAttendanceStatus.fromString(
-                newStatusStr,
-              );
-
-              // Если статус в базе изменился — обновляем стейт через copyWith
-              if (state!.status != updatedStatus) {
-                AppLogger.info('Realtime: Статус урока в БД изменился на: $updatedStatus', 'CurrentLessonNotifier');
-                state = state!.copyWith(status: updatedStatus);
-              }
-            }
-          },
-          onError: (error) {
-            AppLogger.error('Realtime: Ошибка в стриме урока', error, null, 'CurrentLessonNotifier');
-          },
-        );
+  /// Обновляет статус на сервере и локально. Офлайн-безопасен: не бросает исключение.
+  Future<void> updateLessonStatus(LessonAttendanceStatus status) async {
+    if (state?.id == null) return;
+    await _repository.updateStatus(state!.id!, status);
+    state = state!.copyWith(status: status);
   }
 
-  // Обновление статуса (локальное)
+  /// Запрашивает актуальный статус из Supabase. Только онлайн.
+  Future<LessonAttendanceStatus> getFreshStatus() {
+    if (state?.id == null) return Future.value(LessonAttendanceStatus.free);
+    return _repository.getFreshStatus(state!.id!);
+  }
+
+  /// Обновляет статус только в памяти (без сетевого вызова).
   void updateStatus(LessonAttendanceStatus newStatus) {
     if (state == null) return;
     state = state!.copyWith(status: newStatus);
+  }
+
+  void _startStatusStream(String lessonId) {
+    _statusSubscription?.cancel();
+    _statusSubscription = _repository.watchStatus(lessonId).listen(
+      (status) {
+        if (status != null && state != null && state!.status != status) {
+          AppLogger.info(
+            'Realtime: статус урока изменился на $status',
+            'CurrentLessonNotifier',
+          );
+          state = state!.copyWith(status: status);
+        }
+      },
+      onError: (error) {
+        AppLogger.error(
+          'Realtime: ошибка в стриме урока',
+          error,
+          null,
+          'CurrentLessonNotifier',
+        );
+      },
+    );
   }
 
   @override
@@ -77,9 +78,3 @@ class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
     super.dispose();
   }
 }
-
-// Провайдер остается таким же
-final currentLessonProvider =
-    StateNotifierProvider<CurrentLessonNotifier, LessonModel?>((ref) {
-      return CurrentLessonNotifier();
-    });

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/data/repositories/i_attendance_repository.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
@@ -33,7 +32,7 @@ class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
 
     // 2. Supabase real-time → в БД, не напрямую в state
     _realtimeSub =
-        LessonsAttendanceService.getStudentAttendanceStream(studentId).listen(
+        _repository.watchRemoteStudent(studentId).listen(
           (data) => _repository.upsertFromRemote(data).catchError((_) {}),
           onError: (e) => AppLogger.warning(
             'Ошибка real-time посещаемости',

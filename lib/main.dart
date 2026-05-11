@@ -81,16 +81,13 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
   Future<bool> _tryAutoLoginTeacher() async {
     final credentials = await SharedPreferencesService.getTeacherCredentials();
     if (credentials != null) {
-      await ref
+      return await ref
           .read(teacherProvider.notifier)
-          .loginTeacher(
+          .autoLogin(
             email: credentials['login']!,
             password: credentials['password']!,
             institutionId: credentials['institutionId']!,
           );
-
-      final teacher = ref.read(teacherProvider);
-      return teacher != null;
     }
     return false;
   }

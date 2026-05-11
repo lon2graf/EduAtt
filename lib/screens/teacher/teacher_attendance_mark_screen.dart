@@ -8,7 +8,6 @@ import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/utils/app_logger.dart';
@@ -85,6 +84,7 @@ class _TeacherAttendanceMarkScreenState
                   final s = students[index];
                   final a = attendanceList.firstWhere(
                     (att) => att.studentId == s.id,
+                    orElse: () => attendanceList.first,
                   );
 
                   String statusText = "Не отмечен";
@@ -212,7 +212,7 @@ class _TeacherAttendanceMarkScreenState
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -239,7 +239,7 @@ class _TeacherAttendanceMarkScreenState
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -311,31 +311,30 @@ class _TeacherAttendanceMarkScreenState
   }
 
   Widget _buildConfirmButton(BuildContext context, var lesson) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return ElevatedButton(
       onPressed: () async {
+        bool synced;
         try {
-          await ref
+          synced = await ref
               .read(lessonAttendanceMarkProvider.notifier)
               .saveAttendance();
-
-          if (lesson?.id != null) {
-            await LessonService.updateLessonStatus(
-              lesson!.id!,
-              LessonAttendanceStatus.confirmed,
-            );
-            ref
-                .read(currentLessonProvider.notifier)
-                .updateStatus(LessonAttendanceStatus.confirmed);
-          }
-
-          if (context.mounted) {
-            context.go('/teacher/home');
-            EduSnackBar.showSuccess(context, ref, 'Ведомость подтверждена!');
-          }
         } catch (e) {
-          AppLogger.error('Ошибка сохранения посещаемости', e, null, 'TeacherAttendanceMarkScreen');
+          AppLogger.error('Ошибка локального сохранения посещаемости', e, null, 'TeacherAttendanceMarkScreen');
+          if (context.mounted) EduSnackBar.showError(context, ref, 'Ошибка сохранения');
+          return;
+        }
+
+        await ref
+            .read(currentLessonProvider.notifier)
+            .updateLessonStatus(LessonAttendanceStatus.confirmed);
+
+        if (context.mounted) {
+          context.go('/teacher/home');
+          if (synced) {
+            EduSnackBar.showSuccess(context, ref, 'Ведомость подтверждена!');
+          } else {
+            EduSnackBar.showInfo(context, ref, 'Сохранено локально, отправим при подключении');
+          }
         }
       },
       style: ElevatedButton.styleFrom(

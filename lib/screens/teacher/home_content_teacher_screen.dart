@@ -6,7 +6,6 @@ import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/providers/group_provider.dart';
@@ -70,7 +69,16 @@ class _TeacherHomeContentScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitialData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+      if (ref.read(offlineModeProvider)) {
+        EduSnackBar.showInfo(
+          context,
+          ref,
+          'Вход выполнен в оффлайн-режиме. Данные актуальны на момент последнего входа',
+        );
+      }
+    });
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -84,10 +92,11 @@ class _TeacherHomeContentScreenState
 
   Future<void> _loadInitialData() async {
     final teacher = ref.read(teacherProvider);
-    if (teacher != null)
+    if (teacher != null) {
       await ref
           .read(currentLessonProvider.notifier)
           .loadCurrentLessonForTeacher(teacher.id!);
+    }
   }
 
   @override
@@ -115,6 +124,7 @@ class _TeacherHomeContentScreenState
         );
       } else if (!isOffline && wasOffline == true) {
         ref.read(scheduleProvider.notifier).syncSchedule();
+        ref.read(lessonAttendanceMarkProvider.notifier).syncPending();
       }
     });
 
@@ -216,7 +226,7 @@ class _TeacherHomeContentScreenState
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withOpacity(0.3),
+            color: colorScheme.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -237,14 +247,14 @@ class _TeacherHomeContentScreenState
                     Text(
                       '${formatTime(lesson.startTime)} - ${formatTime(lesson.endTime)}',
                       style: TextStyle(
-                        color: colorScheme.onPrimary.withOpacity(0.9),
+                        color: colorScheme.onPrimary.withValues(alpha: 0.9),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      lesson.subjectName ?? 'Предмет',
+                      lesson.subjectName.isEmpty ? 'Предмет' : lesson.subjectName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -260,7 +270,7 @@ class _TeacherHomeContentScreenState
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: colorScheme.onPrimary.withOpacity(0.7),
+                        color: colorScheme.onPrimary.withValues(alpha: 0.7),
                         fontSize: 13,
                       ),
                     ),
@@ -279,7 +289,7 @@ class _TeacherHomeContentScreenState
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 4,
-              backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
+              backgroundColor: colorScheme.onPrimary.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
             ),
           ),
@@ -292,12 +302,13 @@ class _TeacherHomeContentScreenState
 
   Widget _buildStatusInfo(BuildContext context, LessonModel lesson) {
     String text = "Занятие активно";
-    if (lesson.status == LessonAttendanceStatus.onHeadmanEditing)
+    if (lesson.status == LessonAttendanceStatus.onHeadmanEditing) {
       text = "👨‍🎓 Староста отмечает посещаемость";
-    if (lesson.status == LessonAttendanceStatus.waitConfirmation)
+    } else if (lesson.status == LessonAttendanceStatus.waitConfirmation) {
       text = "📩 Ведомость ждет вашего подтверждения";
-    if (lesson.status == LessonAttendanceStatus.confirmed)
+    } else if (lesson.status == LessonAttendanceStatus.confirmed) {
       text = "✅ Учет завершен";
+    }
     return Text(
       text,
       style: const TextStyle(
@@ -342,7 +353,7 @@ class _TeacherHomeContentScreenState
           child: ElevatedButton(
             onPressed: () => context.go('/lesson_chat'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.15),
+              backgroundColor: Colors.white.withValues(alpha: 0.15),
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -380,18 +391,8 @@ class _TeacherHomeContentScreenState
       icon = Icons.lock_open;
     }
 
-    if (isOffline) {
-      icon = Icons.cloud_off;
-      btnText = 'ОФФЛАЙН';
-      btnTextColor = Colors.grey.shade600;
-    }
-
-    return Opacity(
-      opacity: isOffline ? 0.6 : 1.0,
-      child: ElevatedButton.icon(
-      onPressed: isOffline
-          ? () => EduSnackBar.showInfo(context, ref, 'Для работы с ведомостью нужен интернет')
-          : () => _handleTeacherAction(context, lesson, isDanger),
+    return ElevatedButton.icon(
+      onPressed: () => _handleTeacherAction(lesson, isDanger),
       icon: Icon(icon, size: 20),
       label: Text(
         btnText,
@@ -404,72 +405,67 @@ class _TeacherHomeContentScreenState
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      ),
     );
   }
 
   Future<void> _handleTeacherAction(
-    BuildContext context,
     LessonModel lesson,
     bool isDanger,
   ) async {
-    final freshStatus = await LessonService.getFreshStatus(lesson.id!);
-    if (freshStatus != lesson.status) {
-      if (mounted) {
-        EduSnackBar.showInfo(
-          context,
-          ref,
-          "Статус обновился. Фрося обновляет экран...",
-        );
-        _loadInitialData();
+    final isOffline = ref.read(isOfflineProvider);
+
+    if (!isOffline) {
+      try {
+        final freshStatus = await ref.read(currentLessonProvider.notifier).getFreshStatus();
+        if (freshStatus != lesson.status) {
+          if (mounted) {
+            EduSnackBar.showInfo(context, ref, "Статус обновился. Фрося обновляет экран...");
+            _loadInitialData();
+          }
+          return;
+        }
+      } catch (_) {
+        // сеть пропала между проверкой — продолжаем с локальным статусом
       }
-      return;
     }
+
     if (isDanger) {
+      if (!mounted) return;
       final confirm = await showDialog<bool>(
         context: context,
-        builder:
-            (ctx) => AlertDialog(
-              title: const Text('Перехватить управление?'),
-              content: const Text(
-                'Староста сейчас заполняет ведомость. Его данные могут быть потеряны.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Отмена'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  child: const Text(
-                    'Перехватить',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
+        builder: (ctx) => AlertDialog(
+          title: const Text('Перехватить управление?'),
+          content: const Text(
+            'Староста сейчас заполняет ведомость. Его данные могут быть потеряны.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена'),
             ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error,
+              ),
+              child: const Text('Перехватить', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       );
       if (confirm != true) return;
     }
-    _enterEditMode(lesson);
+    if (mounted) _enterEditMode(lesson);
   }
 
   Future<void> _enterEditMode(LessonModel lesson) async {
     try {
-      await LessonService.updateLessonStatus(
-        lesson.id!,
-        LessonAttendanceStatus.onTeacherEditing,
-      );
-      ref
+      await ref
           .read(currentLessonProvider.notifier)
-          .updateStatus(LessonAttendanceStatus.onTeacherEditing);
+          .updateLessonStatus(LessonAttendanceStatus.onTeacherEditing);
+
       if (lesson.groupId.isNotEmpty) {
-        await ref
-            .read(groupStudentsProvider.notifier)
-            .loadGroupStudents(lesson.groupId);
+        await ref.read(groupStudentsProvider.notifier).loadGroupStudents(lesson.groupId);
         final students = ref.read(groupStudentsProvider);
         await ref
             .read(lessonAttendanceMarkProvider.notifier)
@@ -477,7 +473,7 @@ class _TeacherHomeContentScreenState
         if (mounted) context.go('/teacher/mark');
       }
     } catch (e) {
-      EduSnackBar.showError(context, ref, "Не удалось открыть ведомость");
+      if (mounted) EduSnackBar.showError(context, ref, "Не удалось открыть ведомость");
     }
   }
 
@@ -578,7 +574,7 @@ class _TeacherHomeContentScreenState
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.5),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         child: Column(

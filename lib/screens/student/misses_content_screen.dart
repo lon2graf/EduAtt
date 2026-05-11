@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:edu_att/data/remote/lessons_attendace_service.dart';
 import 'package:edu_att/providers/lesson_attendance_provider.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
+import 'package:edu_att/utils/attendance_analytics_helper.dart';
+import 'package:edu_att/screens/student/widgets/attendance_stats_charts.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 
@@ -19,6 +20,7 @@ class MissesContentScreen extends ConsumerStatefulWidget {
 
 class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   DateTime _selectedDate = DateTime.now();
+  bool _showCharts = false;
 
   void _goToPreviousDay() {
     setState(() {
@@ -48,42 +50,40 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     final List<LessonAttendanceModel> allAttendances = ref.watch(
       attendanceProvider,
     );
     final student = ref.watch(currentStudentProvider);
 
-    List<LessonAttendanceModel> filteredRecords =
-        LessonsAttendanceService.filterAttendancesByDate(
-          allAttendances,
-          _selectedDate,
-        );
-
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 8),
-            _buildDateNavigationHeader(context),
-            const SizedBox(height: 16),
+            _buildTopBar(context, colorScheme, student, allAttendances),
+            const SizedBox(height: 8),
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  if (student?.id != null) {
-                    await ref
-                        .read(attendanceProvider.notifier)
-                        .syncAttendanceDelta(student!.id!);
-                  }
-                },
-                child: _buildAttendanceList(
-                  context,
-                  filteredRecords,
-                  allAttendances.isEmpty,
-                ),
-              ),
+              child: _showCharts
+                  ? AttendanceStatsSection(attendances: allAttendances)
+                  : RefreshIndicator(
+                      onRefresh: () async {
+                        if (student?.id != null) {
+                          await ref
+                              .read(attendanceProvider.notifier)
+                              .syncAttendanceDelta(student!.id!);
+                        }
+                      },
+                      child: _buildAttendanceList(
+                        context,
+                        AttendanceAnalyticsHelper.filterByDate(
+                          allAttendances,
+                          _selectedDate,
+                        ),
+                        allAttendances.isEmpty,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -91,69 +91,127 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     );
   }
 
+  Widget _buildTopBar(
+    BuildContext context,
+    ColorScheme colorScheme,
+    dynamic student,
+    List<LessonAttendanceModel> allAttendances,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _showCharts
+                ? _buildViewToggle(colorScheme)
+                : _buildDateNavigationHeader(context),
+          ),
+          const SizedBox(width: 8),
+          _buildViewToggleButton(colorScheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewToggleButton(ColorScheme colorScheme) {
+    return Tooltip(
+      message: _showCharts ? 'Дневник' : 'Статистика',
+      child: InkWell(
+        onTap: () => setState(() => _showCharts = !_showCharts),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: _showCharts
+                ? colorScheme.primaryContainer
+                : colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            _showCharts ? Icons.list_alt : Icons.bar_chart,
+            color: _showCharts
+                ? colorScheme.onPrimaryContainer
+                : colorScheme.onSurfaceVariant,
+            size: 22,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewToggle(ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        'Статистика посещаемости',
+        style: TextStyle(
+          color: colorScheme.onSurfaceVariant,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   Widget _buildDateNavigationHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            onPressed: _goToPreviousDay,
-            icon: Icon(
-              Icons.chevron_left,
-              size: 32,
-              color: colorScheme.primary,
-            ),
+    return Row(
+      children: [
+        IconButton(
+          onPressed: _goToPreviousDay,
+          icon: Icon(
+            Icons.chevron_left,
+            size: 32,
+            color: colorScheme.primary,
           ),
-          Expanded(
-            child: GestureDetector(
-              onTap: _selectDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _getWeekdayName(_selectedDate.weekday).toUpperCase(),
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
+        ),
+        Expanded(
+          child: GestureDetector(
+            onTap: _selectDate,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _getWeekdayName(_selectedDate.weekday).toUpperCase(),
+                    style: TextStyle(
+                      color: colorScheme.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                     ),
-                    Text(
-                      '${_selectedDate.day} ${_getMonthName(_selectedDate.month).toUpperCase()}',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                  Text(
+                    '${_selectedDate.day} ${_getMonthName(_selectedDate.month).toUpperCase()}',
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          IconButton(
-            onPressed: _goToNextDay,
-            icon: Icon(
-              Icons.chevron_right,
-              size: 32,
-              color: colorScheme.primary,
-            ),
+        ),
+        IconButton(
+          onPressed: _goToNextDay,
+          icon: Icon(
+            Icons.chevron_right,
+            size: 32,
+            color: colorScheme.primary,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -204,22 +262,27 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     final Color statusColor = statusEnum?.color ?? Colors.grey;
 
     IconData statusIcon = Icons.help_outline_rounded;
-    if (statusEnum == AttendanceStatus.present)
+    if (statusEnum == AttendanceStatus.present) {
       statusIcon = Icons.check_circle_rounded;
-    if (statusEnum == AttendanceStatus.absent)
+    }
+    if (statusEnum == AttendanceStatus.absent) {
       statusIcon = Icons.event_busy_rounded;
-    if (statusEnum == AttendanceStatus.late)
+    }
+    if (statusEnum == AttendanceStatus.late) {
       statusIcon = Icons.access_time_filled_rounded;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -234,7 +297,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
+                  color: statusColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(statusIcon, color: statusColor, size: 22),
@@ -258,10 +321,9 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                           color: colorScheme.onSurface,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          decoration:
-                              statusEnum == AttendanceStatus.absent
-                                  ? TextDecoration.underline
-                                  : null,
+                          decoration: statusEnum == AttendanceStatus.absent
+                              ? TextDecoration.underline
+                              : null,
                         ),
                       ),
                     ),
@@ -296,7 +358,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

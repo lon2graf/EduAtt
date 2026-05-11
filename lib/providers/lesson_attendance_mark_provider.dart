@@ -103,24 +103,27 @@ class LessonAttendanceMarkNotifier
     ];
   }
 
-  Future<void> saveAttendance() async {
+  /// Сохраняет локально (обязательно) и пытается синхронизировать с сервером.
+  /// Возвращает true если данные ушли на сервер, false — если только в Drift.
+  Future<bool> saveAttendance() async {
+    await _repository.saveLocally(state);
     try {
-      // 1. Сохраняем локально с isSynced = false
-      await _repository.saveLocally(state);
-      // 2. Синхронизируем с Supabase
       await _repository.syncToRemote();
-      AppLogger.info(
-        'Посещаемость успешно синхронизирована с БД',
-        'LessonAttendanceMarkNotifier',
-      );
+      AppLogger.info('Посещаемость синхронизирована с сервером', 'LessonAttendanceMarkNotifier');
+      return true;
     } catch (e) {
-      AppLogger.error(
-        'Ошибка при сохранении посещаемости',
-        e,
-        null,
-        'LessonAttendanceMarkNotifier',
-      );
-      rethrow;
+      AppLogger.warning('Синхронизация отложена (оффлайн), данные сохранены локально', 'LessonAttendanceMarkNotifier');
+      return false;
+    }
+  }
+
+  /// Вызывается при восстановлении соединения — отправляет все отложенные записи.
+  Future<void> syncPending() async {
+    try {
+      await _repository.syncToRemote();
+      AppLogger.info('Отложенная синхронизация посещаемости выполнена', 'LessonAttendanceMarkNotifier');
+    } catch (e) {
+      AppLogger.warning('syncPending: синхронизация не удалась', 'LessonAttendanceMarkNotifier');
     }
   }
 

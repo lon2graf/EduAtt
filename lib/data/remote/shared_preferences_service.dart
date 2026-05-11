@@ -9,6 +9,7 @@ class SharedPreferencesService {
   static const String _teacherLoginKey = 'teacher_login';
   static const String _teacherPasswordKey = 'teacher_password';
   static const String _teacherInstitutionKey = 'teacher_institution';
+  static const String _teacherIdKey = 'teacher_id';
   static const String _themeKey = 'app_theme_mode';
   static const String _mascotEnabledKey = 'mascot_enabled';
 
@@ -67,6 +68,16 @@ class SharedPreferencesService {
     await prefs.setString(_userTypeKey, 'teacher');
   }
 
+  static Future<void> saveTeacherId(String id) async {
+    final prefs = await _instance;
+    await prefs.setString(_teacherIdKey, id);
+  }
+
+  static Future<String?> getTeacherId() async {
+    final prefs = await _instance;
+    return prefs.getString(_teacherIdKey);
+  }
+
   static Future<Map<String, String>?> getTeacherCredentials() async {
     final prefs = await _instance;
     final login = prefs.getString(_teacherLoginKey);
@@ -109,6 +120,7 @@ class SharedPreferencesService {
     await prefs.remove(_teacherLoginKey);
     await prefs.remove(_teacherPasswordKey);
     await prefs.remove(_teacherInstitutionKey);
+    await prefs.remove(_teacherIdKey);
     await prefs.remove(_userTypeKey);
   }
 

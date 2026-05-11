@@ -75,11 +75,11 @@ class LessonService extends BaseService {
     final currentTime =
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:00";
 
-    // Запрос аналогичен предыдущему, но фильтрация идет по teacher_id
-    final response =
-        await BaseService.client
-            .from('lessons')
-            .select('''
+    try {
+      final response =
+          await BaseService.client
+              .from('lessons')
+              .select('''
         id,
         topic,
         attendance_status,
@@ -99,22 +99,23 @@ class LessonService extends BaseService {
           )
         )
       ''')
-            .eq('schedule.teacher_id', teacherId) // Фильтр по учителю
-            .eq('schedule.date', today) // Текущая дата
-            .lte('schedule.start_time', currentTime) // Урок уже начался
-            .gt('schedule.end_time', currentTime) // Но еще идет
-            .maybeSingle(); // Получаем одну запись
+              .eq('schedule.teacher_id', teacherId)
+              .eq('schedule.date', today)
+              .lte('schedule.start_time', currentTime)
+              .gt('schedule.end_time', currentTime)
+              .maybeSingle();
 
-    // Отладочные выводы
-    AppLogger.info('Получение текущего урока для преподавателя', 'LessonService');
-    AppLogger.debug('ID преподавателя: $teacherId', 'LessonService');
-    AppLogger.debug('Дата: $today, Время: $currentTime', 'LessonService');
-    AppLogger.debug('Ответ БД: ${response != null ? "урок найден" : "урок не найден"}', 'LessonService');
+      AppLogger.info('Получение текущего урока для преподавателя', 'LessonService');
+      AppLogger.debug('ID преподавателя: $teacherId', 'LessonService');
+      AppLogger.debug('Дата: $today, Время: $currentTime', 'LessonService');
+      AppLogger.debug('Ответ БД: ${response != null ? "урок найден" : "урок не найден"}', 'LessonService');
 
-    if (response == null) return null;
-
-    // Преобразуем JSON в модель LessonModel
-    return LessonModel.fromJson(response);
+      if (response == null) return null;
+      return LessonModel.fromJson(response);
+    } catch (e, stackTrace) {
+      AppLogger.error('Критическая ошибка в getCurrentLessonForTeacher', e, stackTrace, 'LessonService');
+      return null;
+    }
   }
 
   static Future<void> updateLessonStatus(

@@ -1,12 +1,12 @@
 import 'package:edu_att/models/attendance_status.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
-import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
+import 'package:edu_att/providers/connectivity_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
@@ -28,13 +28,9 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     final lesson = ref.read(currentLessonProvider);
     if (lesson != null &&
         lesson.status == LessonAttendanceStatus.onHeadmanEditing) {
-      await LessonService.updateLessonStatus(
-        lesson.id!,
-        LessonAttendanceStatus.free,
-      );
-      ref
+      await ref
           .read(currentLessonProvider.notifier)
-          .updateStatus(LessonAttendanceStatus.free);
+          .updateLessonStatus(LessonAttendanceStatus.free);
     }
     if (mounted) context.go('/student/home');
   }
@@ -45,6 +41,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     final students = ref.watch(groupStudentsProvider);
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
     final lesson = ref.watch(currentLessonProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
     if (lesson?.status == LessonAttendanceStatus.onTeacherEditing) {
       return _buildLockedScreen(colorScheme);
@@ -180,7 +177,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
                         onPressed: () => setState(() => currentStudentIndex++),
                         icon: const Icon(Icons.chevron_right, size: 44),
                       )
-                      : _buildSaveButton(context, lesson),
+                      : _buildSaveButton(context, lesson, isOffline),
                 ],
               ),
             ),
@@ -198,7 +195,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -225,7 +222,7 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -296,29 +293,30 @@ class _AttendanceMarkScreenState extends ConsumerState<AttendanceMarkScreen> {
     );
   }
 
-  Widget _buildSaveButton(BuildContext context, var lesson) {
+  Widget _buildSaveButton(BuildContext context, var lesson, bool isOffline) {
     final colorScheme = Theme.of(context).colorScheme;
     return ElevatedButton(
       onPressed: () async {
+        if (isOffline) {
+          EduSnackBar.showInfo(context, ref, "Для работы с ведомостью нужен интернет");
+          return;
+        }
         if (lesson == null) return;
         try {
           await ref
               .read(lessonAttendanceMarkProvider.notifier)
               .saveAttendance();
-          await LessonService.updateLessonStatus(
-            lesson.id!,
-            LessonAttendanceStatus.waitConfirmation,
-          );
-          ref
+          await ref
               .read(currentLessonProvider.notifier)
-              .updateStatus(LessonAttendanceStatus.waitConfirmation);
+              .updateLessonStatus(LessonAttendanceStatus.waitConfirmation);
           if (context.mounted) {
             EduSnackBar.showSuccess(context, ref, "Отправлено! ✨");
             context.go('/student/home');
           }
         } catch (e) {
-          if (context.mounted)
+          if (context.mounted) {
             EduSnackBar.showError(context, ref, "Ошибка: $e");
+          }
         }
       },
       style: ElevatedButton.styleFrom(

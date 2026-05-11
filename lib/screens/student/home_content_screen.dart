@@ -17,9 +17,8 @@ import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/connectivity_provider.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
 
-// Сервисы и Утилиты
+// Репозитории и Утилиты
 import 'package:edu_att/data/remote/lessons_attendace_service.dart';
-import 'package:edu_att/data/remote/lesson_service.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
 
 // Маскот
@@ -116,7 +115,6 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final student = ref.watch(currentStudentProvider);
     final lesson = ref.watch(currentLessonProvider);
     final allAttendances = ref.watch(attendanceProvider);
@@ -259,7 +257,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.5),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         child: Column(
@@ -311,7 +309,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withOpacity(0.3),
+            color: colorScheme.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -335,7 +333,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                     Text(
                       '${formatTime(lesson.startTime)} - ${formatTime(lesson.endTime)}',
                       style: TextStyle(
-                        color: colorScheme.onPrimary.withOpacity(0.9),
+                        color: colorScheme.onPrimary.withValues(alpha: 0.9),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -343,7 +341,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                     const SizedBox(height: 4),
 
                     Text(
-                      lesson.subjectName ?? 'Предмет',
+                      lesson.subjectName.isEmpty ? 'Предмет' : lesson.subjectName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -354,12 +352,11 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${lesson.teacherSurname ?? ''} ${lesson.teacherName ?? ''}'
-                          .trim(),
+                      '${lesson.teacherSurname} ${lesson.teacherName}'.trim(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: colorScheme.onPrimary.withOpacity(0.7),
+                        color: colorScheme.onPrimary.withValues(alpha: 0.7),
                         fontSize: 13,
                       ),
                     ),
@@ -379,7 +376,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 4,
-              backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
+              backgroundColor: colorScheme.onPrimary.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
             ),
           ),
@@ -388,25 +385,6 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
           // Кнопки действий
           _buildCardActions(context, lesson, student, attendances, isOffline),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatusInfoText(LessonModel lesson) {
-    String text = "Занятие активно";
-    if (lesson.status == LessonAttendanceStatus.onTeacherEditing)
-      text = "📝 Преподаватель вносит правки";
-    if (lesson.status == LessonAttendanceStatus.waitConfirmation)
-      text = "⏳ Ведомость на проверке";
-    if (lesson.status == LessonAttendanceStatus.confirmed)
-      text = "✅ Учет завершен";
-
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
       ),
     );
   }
@@ -459,7 +437,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
           child: ElevatedButton(
             onPressed: () => context.go('/lesson_chat'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.15),
+              backgroundColor: Colors.white.withValues(alpha: 0.15),
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -500,22 +478,24 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
               ? null
               : () async {
                 try {
-                  await LessonsAttendanceService.markSelfPresent(
+                  await ref.read(attendanceRepositoryProvider).markSelfPresent(
                     lessonId: lesson.id!,
                     studentId: student.id!,
                   );
                   await _loadInitialData();
-                  if (context.mounted)
+                  if (context.mounted) {
                     EduSnackBar.showSuccess(context, ref, "Вы в списке! 🐾");
+                  }
                 } catch (e) {
-                  if (context.mounted)
+                  if (context.mounted) {
                     EduSnackBar.showError(context, ref, "Ошибка отметки");
+                  }
                 }
               },
       style: ElevatedButton.styleFrom(
         backgroundColor: isMarked ? Colors.green.shade400 : Colors.white,
         foregroundColor: isMarked ? Colors.white : Colors.green.shade800,
-        disabledBackgroundColor: Colors.white.withOpacity(0.3),
+        disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
         disabledForegroundColor: Colors.white60,
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -543,31 +523,28 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
               : () async {
                 setState(() => _isPreparing = true);
                 try {
-                  // 1. ПРОВЕРКА: берем свежий статус из БД перед началом
-                  final freshStatus = await LessonService.getFreshStatus(
-                    lesson.id!,
-                  );
+                  // 1. Проверяем свежий статус перед началом
+                  final freshStatus = await ref
+                      .read(currentLessonProvider.notifier)
+                      .getFreshStatus();
                   if (freshStatus != LessonAttendanceStatus.free &&
                       freshStatus != LessonAttendanceStatus.onHeadmanEditing) {
-                    EduSnackBar.showInfo(
-                      context,
-                      ref,
-                      "Статус изменился. Фрося обновляет данные...",
-                    );
+                    if (mounted) {
+                      EduSnackBar.showInfo(
+                        this.context,
+                        ref,
+                        "Статус изменился. Фрося обновляет данные...",
+                      );
+                    }
                     _loadInitialData();
                     return;
                   }
 
-                  // 2. КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Меняем статус на "Староста редактирует" в БД
+                  // 2. Меняем статус на "Староста редактирует"
                   if (lesson.status == LessonAttendanceStatus.free) {
-                    await LessonService.updateLessonStatus(
-                      lesson.id!,
-                      LessonAttendanceStatus.onHeadmanEditing,
-                    );
-                    // Обновляем локально, чтобы UI сразу среагировал
-                    ref
+                    await ref
                         .read(currentLessonProvider.notifier)
-                        .updateStatus(LessonAttendanceStatus.onHeadmanEditing);
+                        .updateLessonStatus(LessonAttendanceStatus.onHeadmanEditing);
                   }
 
                   // 3. Грузим данные для ведомости
@@ -579,16 +556,17 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                       .read(lessonAttendanceMarkProvider.notifier)
                       .initializeAttendance(students, lesson);
 
-                  if (context.mounted) {
-                    context.go('/student/mark');
+                  if (mounted) {
+                    this.context.go('/student/mark');
                   }
                 } catch (e) {
-                  if (context.mounted)
+                  if (mounted) {
                     EduSnackBar.showError(
-                      context,
+                      this.context,
                       ref,
                       "Не удалось занять ведомость",
                     );
+                  }
                 } finally {
                   if (mounted) setState(() => _isPreparing = false);
                 }
@@ -618,7 +596,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor:
-            isLocked ? Colors.white.withOpacity(0.3) : Colors.white,
+            isLocked ? Colors.white.withValues(alpha: 0.3) : Colors.white,
         foregroundColor: isLocked ? Colors.white70 : colorScheme.primary,
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14),

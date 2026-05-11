@@ -11,8 +11,7 @@ import 'package:edu_att/utils/data_result.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Ref;
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:edu_att/data/remote/shared_preferences_service.dart';
-
-final offlineModeProvider = StateProvider<bool>((ref) => false);
+import 'package:edu_att/providers/connectivity_provider.dart';
 
 final currentStudentProvider =
     StateNotifierProvider<StudentNotifier, StudentModel?>(

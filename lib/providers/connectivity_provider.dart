@@ -1,5 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) {
   return Connectivity().onConnectivityChanged;
@@ -15,3 +16,7 @@ final isOfflineProvider = Provider<bool>((ref) {
     error: (_, __) => false,
   );
 });
+
+/// Флаг офлайн-входа: true если пользователь вошёл без сети (из локального кэша).
+/// Сбрасывается в false после успешной фоновой проверки авторизации.
+final offlineModeProvider = StateProvider<bool>((ref) => false);
