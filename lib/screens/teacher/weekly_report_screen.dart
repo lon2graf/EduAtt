@@ -8,7 +8,7 @@ import 'package:edu_att/data/remote/student_service.dart';
 import 'package:edu_att/data/repositories/group_repository.dart';
 import 'package:edu_att/utils/weekly_report_data_preparer.dart';
 import 'package:edu_att/utils/pdf_generator.dart';
-import 'package:printing/printing.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:edu_att/models/teacher_model.dart';
 import 'package:edu_att/models/group_model.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
@@ -247,9 +247,10 @@ class _TeacherWeeklyReportScreenState
       );
 
       final pdfBytes = await generateAttendanceReportPdf(reportData);
-      await Printing.sharePdf(
+      await FilePicker.platform.saveFile(
+        dialogTitle: 'Сохранить ведомость',
+        fileName: 'vedomost_${_formatFilenameDate(monday)}.pdf',
         bytes: Uint8List.fromList(pdfBytes),
-        filename: 'vedomost_${_formatFilenameDate(monday)}.pdf',
       );
     } catch (e) {
       if (mounted) {

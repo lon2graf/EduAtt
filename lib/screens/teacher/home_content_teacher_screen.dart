@@ -12,6 +12,8 @@ import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
 import 'package:edu_att/providers/connectivity_provider.dart';
+import 'package:edu_att/providers/group_analytics_provider.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
 
 // --- ВСПОМОГАТЕЛЬНЫЙ ВИДЖЕТ ---
@@ -93,9 +95,22 @@ class _TeacherHomeContentScreenState
   Future<void> _loadInitialData() async {
     final teacher = ref.read(teacherProvider);
     if (teacher != null) {
-      await ref
-          .read(currentLessonProvider.notifier)
-          .loadCurrentLessonForTeacher(teacher.id!);
+      final isPersonal = ref.read(personalModeProvider).isActive;
+      if (isPersonal) {
+        await ref
+            .read(currentLessonProvider.notifier)
+            .loadCurrentOrNextLessonForTeacher(teacher.id!);
+      } else {
+        await ref
+            .read(currentLessonProvider.notifier)
+            .loadCurrentLessonForTeacher(teacher.id!);
+      }
+      final lesson = ref.read(currentLessonProvider);
+      if (lesson != null && lesson.groupId.isNotEmpty) {
+        ref
+            .read(groupAnalyticsProvider.notifier)
+            .loadForGroup(lesson.groupId, lesson.groupName);
+      }
     }
   }
 
@@ -148,9 +163,23 @@ class _TeacherHomeContentScreenState
                 child: _buildStatsRow(context, lesson),
               ),
             ),
+            if (lesson != null) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                  child: _buildSectionHeader(context, 'Аналитика группы'),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildAnalyticsCard(context, lesson),
+                ),
+              ),
+            ],
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 32, 20, 8),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
                 child: _buildSectionHeader(context, 'Активное занятие'),
               ),
             ),
@@ -242,7 +271,7 @@ class _TeacherHomeContentScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLiveBadge(),
+                    _buildLiveBadge(lesson),
                     const SizedBox(height: 12),
                     Text(
                       '${formatTime(lesson.startTime)} - ${formatTime(lesson.endTime)}',
@@ -319,21 +348,24 @@ class _TeacherHomeContentScreenState
     );
   }
 
-  Widget _buildLiveBadge() {
+  Widget _buildLiveBadge(LessonModel lesson) {
+    final upcoming = lesson.isUpcoming;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.redAccent,
+        color: upcoming ? Colors.blueAccent : Colors.redAccent,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          LiveIndicator(),
-          SizedBox(width: 8),
+          if (!upcoming) const LiveIndicator(),
+          if (!upcoming) const SizedBox(width: 8),
+          if (upcoming) const Icon(Icons.access_time, size: 10, color: Colors.white),
+          if (upcoming) const SizedBox(width: 4),
           Text(
-            'LIVE',
-            style: TextStyle(
+            upcoming ? 'СКОРО' : 'LIVE',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -346,26 +378,32 @@ class _TeacherHomeContentScreenState
   }
 
   Widget _buildTeacherActions(BuildContext context, LessonModel lesson, bool isOffline) {
+    final isPersonal = ref.read(personalModeProvider).isActive;
     return Row(
       children: [
-        Expanded(
-          flex: 2,
-          child: ElevatedButton(
-            onPressed: () => context.go('/lesson_chat'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+        if (!isPersonal) ...[
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: () => context.go('/lesson_chat'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
+              child: const Icon(Icons.chat_bubble_outline, size: 20),
             ),
-            child: const Icon(Icons.chat_bubble_outline, size: 20),
           ),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          flex: isPersonal ? 7 : 5,
+          child: _buildTeacherMainButton(context, lesson, isOffline),
         ),
-        const SizedBox(width: 12),
-        Expanded(flex: 5, child: _buildTeacherMainButton(context, lesson, isOffline)),
       ],
     );
   }
@@ -499,6 +537,91 @@ class _TeacherHomeContentScreenState
     } catch (e) {
       return 0.0;
     }
+  }
+
+  Widget _buildAnalyticsCard(BuildContext context, LessonModel lesson) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final analytics = ref.watch(groupAnalyticsProvider);
+
+    Color pctColor(double pct) {
+      if (pct >= 80) return Colors.green;
+      if (pct >= 50) return Colors.amber;
+      return Colors.red;
+    }
+
+    return GestureDetector(
+      onTap: () => context.push(
+        '/teacher/analytics'
+        '?group=${Uri.encodeComponent(lesson.groupId)}'
+        '&name=${Uri.encodeComponent(lesson.groupName)}',
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.bar_chart_rounded, color: colorScheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Аналитика посещаемости',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    analytics.isLoading
+                        ? 'Загружаем...'
+                        : analytics.data.isEmpty
+                            ? 'Нет данных — отметьте первое занятие'
+                            : '${analytics.data.timeline.length} зан. · '
+                                '${analytics.data.atRisk.length} в зоне риска',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!analytics.isLoading && !analytics.data.isEmpty) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: pctColor(analytics.data.overallPercentage)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${analytics.data.overallPercentage.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: pctColor(analytics.data.overallPercentage),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildNoLessonState(BuildContext context) {

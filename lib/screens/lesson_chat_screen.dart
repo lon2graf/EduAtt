@@ -6,7 +6,6 @@ import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/providers/chat_messages_provider.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
-import 'package:edu_att/utils/edu_snack_bar.dart';
 import 'package:go_router/go_router.dart';
 
 class LessonChatScreen extends ConsumerStatefulWidget {
@@ -62,10 +61,10 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
           children: [
             const Text('Чат занятия', style: TextStyle(fontSize: 16)),
             Text(
-              currentLesson.subjectName ?? '',
+              currentLesson.subjectName,
               style: TextStyle(
                 fontSize: 12,
-                color: colorScheme.onPrimary.withOpacity(0.8),
+                color: colorScheme.onPrimary.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -149,7 +148,7 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
         ),
         decoration: BoxDecoration(
           color:
-              isOwn ? colorScheme.primaryContainer : colorScheme.surfaceVariant,
+              isOwn ? colorScheme.primaryContainer : colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -189,7 +188,7 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
                 "${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}",
                 style: TextStyle(
                   fontSize: 10,
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -220,7 +219,7 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+          top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
         ),
       ),
       child: Row(
@@ -231,7 +230,7 @@ class _LessonChatScreenState extends ConsumerState<LessonChatScreen> {
               decoration: InputDecoration(
                 hintText: 'Сообщение...',
                 filled: true,
-                fillColor: colorScheme.surfaceVariant.withOpacity(0.5),
+                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,

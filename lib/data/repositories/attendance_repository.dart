@@ -121,6 +121,32 @@ class AttendanceRepository implements IAttendanceRepository {
       );
 
   @override
+  Future<List<LessonAttendanceModel>> getGroupAttendanceInRange({
+    required String groupId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final rows = await _dao.getForGroup(groupId, startDate, endDate);
+    return rows.map((row) {
+      final a = row.readTable(_db.lessonAttendances);
+      final s = row.readTable(_db.schedules);
+      final st = row.readTable(_db.students);
+      final sub = row.readTable(_db.subjects);
+      return LessonAttendanceModel(
+        id: a.id,
+        lessonId: a.lessonId,
+        studentId: a.studentId,
+        studentName: '${st.surname} ${st.name}',
+        status: AttendanceStatus.fromString(a.status),
+        lessonDate: s.date,
+        lessonStart: s.startTime,
+        lessonEnd: s.endTime,
+        subjectName: sub.name,
+      );
+    }).toList();
+  }
+
+  @override
   Future<void> upsertFromRemote(List<Map<String, dynamic>> raw) async {
     if (raw.isEmpty) return;
     final companions = raw.map(

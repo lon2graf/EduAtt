@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 
 import 'package:edu_att/data/remote/shared_preferences_service.dart';
+import 'package:edu_att/data/services/personal_mode_service.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/theme/theme_provider.dart';
@@ -52,6 +54,8 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
       loginSuccess = await _tryAutoLoginStudent();
     } else if (userType == 'teacher') {
       loginSuccess = await _tryAutoLoginTeacher();
+    } else if (userType == 'personal') {
+      loginSuccess = await _tryAutoLoginPersonal();
     }
 
     if (mounted) {
@@ -60,6 +64,29 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
         _shouldRedirectToHome = loginSuccess;
         _userType = userType ?? '';
       });
+    }
+  }
+
+  Future<bool> _tryAutoLoginPersonal() async {
+    try {
+      final roleStr = await SharedPreferencesService.getPersonalRole();
+      final role = PersonalRoleExt.fromString(roleStr);
+      if (role == null) return false;
+
+      final service = ref.read(personalModeServiceProvider);
+      await service.initializeIfNeeded(role);
+
+      ref.read(personalModeProvider.notifier).activate(role);
+
+      if (role == PersonalRole.teacher) {
+        ref.read(teacherProvider.notifier).loginPersonal(service.buildTeacherModel());
+      } else {
+        ref.read(currentStudentProvider.notifier).loginPersonal(service.buildStudentModel(role));
+      }
+      return true;
+    } catch (e) {
+      AppLogger.error('Ошибка автовхода в личный режим', e, null, 'main');
+      return false;
     }
   }
 
@@ -104,6 +131,9 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
           appRouter.go('/student/home');
         } else if (_userType == 'teacher') {
           appRouter.go('/teacher/home');
+        } else if (_userType == 'personal') {
+          final role = ref.read(personalModeProvider).role;
+          appRouter.go(role == PersonalRole.teacher ? '/teacher/home' : '/student/home');
         }
         setState(() {
           _shouldRedirectToHome = false;

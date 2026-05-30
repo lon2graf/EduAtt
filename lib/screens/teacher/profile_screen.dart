@@ -1,15 +1,14 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/models/teacher_model.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/theme/theme_provider.dart';
 import 'package:edu_att/theme/app_theme_type.dart';
 import 'package:go_router/go_router.dart';
-import 'package:edu_att/mascot/mascot_widget.dart';
-import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/providers/frosya_provider.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:edu_att/widgets/modals/logout_confirm_dialog.dart';
 
 class TeacherProfileContentScreen extends ConsumerWidget {
   const TeacherProfileContentScreen({super.key});
@@ -19,6 +18,7 @@ class TeacherProfileContentScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final TeacherModel? teacher = ref.watch(teacherProvider);
+    final isPersonal = ref.watch(personalModeProvider).isActive;
 
     return Scaffold(
       body: SafeArea(
@@ -36,35 +36,22 @@ class TeacherProfileContentScreen extends ConsumerWidget {
                   children: [
                     _buildSectionTitle(context, 'Личные данные'),
                     const SizedBox(height: 12),
-                    _buildInfoCard(
-                      context,
-                      'Email',
-                      teacher?.email ?? 'Не указан',
-                    ),
+                    _buildInfoCard(context, 'Email', teacher?.email ?? 'Не указан'),
                     const SizedBox(height: 12),
-                    _buildInfoCard(
-                      context,
-                      'Логин',
-                      teacher?.login ?? 'Не указан',
-                    ),
+                    _buildInfoCard(context, 'Логин', teacher?.login ?? 'Не указан'),
                     const SizedBox(height: 12),
-                    _buildInfoCard(
-                      context,
-                      'Кафедра',
-                      teacher?.department ?? 'Не указана',
-                    ),
+                    _buildInfoCard(context, 'Кафедра', teacher?.department ?? 'Не указана'),
 
                     const SizedBox(height: 32),
 
                     _buildSectionTitle(context, 'Настройки приложения'),
                     const SizedBox(height: 12),
-                    // Единый блок настроек
                     Container(
                       decoration: BoxDecoration(
                         color: colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: colorScheme.outlineVariant.withOpacity(0.5),
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Column(
@@ -74,9 +61,24 @@ class TeacherProfileContentScreen extends ConsumerWidget {
                             height: 1,
                             indent: 16,
                             endIndent: 16,
-                            color: colorScheme.outlineVariant.withOpacity(0.5),
+                            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                           ),
                           _buildThemeSelector(context, ref),
+                          if (isPersonal) ...[
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.settings_suggest_outlined),
+                              title: const Text('Управление данными'),
+                              subtitle: const Text('Предметы, группы, расписание, бэкап'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push('/personal/manage'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -85,7 +87,7 @@ class TeacherProfileContentScreen extends ConsumerWidget {
               ),
 
               const SizedBox(height: 40),
-              _buildLogoutButton(context, ref),
+              _buildLogoutButton(context, ref, isPersonal),
             ],
           ),
         ),
@@ -167,7 +169,6 @@ class TeacherProfileContentScreen extends ConsumerWidget {
       AppThemeType.dark: 'Темная',
       AppThemeType.system: 'Системная',
     };
-
     return ListTile(
       leading: const Icon(Icons.palette_outlined),
       title: const Text('Тема оформления'),
@@ -179,22 +180,20 @@ class TeacherProfileContentScreen extends ConsumerWidget {
   void _showThemeDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder:
-          (context) => SimpleDialog(
-            title: const Text('Выберите тему'),
-            children:
-                AppThemeType.values
-                    .map(
-                      (type) => SimpleDialogOption(
-                        onPressed: () {
-                          ref.read(themeProvider.notifier).setTheme(type);
-                          Navigator.pop(context);
-                        },
-                        child: Text(type.name.toUpperCase()),
-                      ),
-                    )
-                    .toList(),
-          ),
+      builder: (context) => SimpleDialog(
+        title: const Text('Выберите тему'),
+        children: AppThemeType.values
+            .map(
+              (type) => SimpleDialogOption(
+                onPressed: () {
+                  ref.read(themeProvider.notifier).setTheme(type);
+                  Navigator.pop(context);
+                },
+                child: Text(type.name.toUpperCase()),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 
@@ -206,7 +205,7 @@ class TeacherProfileContentScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,16 +247,21 @@ class TeacherProfileContentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
+  Widget _buildLogoutButton(BuildContext context, WidgetRef ref, bool isPersonal) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: SizedBox(
         width: double.infinity,
         height: 54,
         child: TextButton.icon(
-          onPressed: () {
+          onPressed: () async {
+            if (isPersonal) {
+              final confirmed = await showPersonalLogoutDialog(context, ref);
+              if (!confirmed || !context.mounted) return;
+            }
             ref.read(teacherProvider.notifier).logout();
-            context.go('/');
+            ref.read(personalModeProvider.notifier).deactivate();
+            if (context.mounted) context.go('/');
           },
           icon: const Icon(Icons.logout_rounded, color: Colors.red),
           label: const Text(
@@ -269,7 +273,7 @@ class TeacherProfileContentScreen extends ConsumerWidget {
             ),
           ),
           style: TextButton.styleFrom(
-            backgroundColor: Colors.red.withOpacity(0.1),
+            backgroundColor: Colors.red.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),

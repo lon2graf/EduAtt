@@ -57,6 +57,44 @@ class AttendanceDao {
             ]))
           .watch();
 
+  /// Посещаемость группы за диапазон дат (JOIN: attendances → lessons → schedules → students → subjects).
+  Future<List<TypedResult>> getForGroup(
+    String groupId,
+    DateTime startDate,
+    DateTime endDate,
+  ) =>
+      (_db
+              .select(_db.lessonAttendances)
+              .join([
+                innerJoin(
+                  _db.lessons,
+                  _db.lessons.id.equalsExp(_db.lessonAttendances.lessonId),
+                ),
+                innerJoin(
+                  _db.schedules,
+                  _db.schedules.id.equalsExp(_db.lessons.scheduleId),
+                ),
+                innerJoin(
+                  _db.students,
+                  _db.students.id.equalsExp(_db.lessonAttendances.studentId),
+                ),
+                innerJoin(
+                  _db.subjects,
+                  _db.subjects.id.equalsExp(_db.schedules.subjectId),
+                ),
+              ])
+            ..where(
+              _db.schedules.groupId.equals(groupId) &
+                  _db.schedules.date.isBiggerOrEqualValue(startDate) &
+                  _db.schedules.date.isSmallerOrEqualValue(endDate) &
+                  _db.lessonAttendances.status.isNotNull(),
+            )
+            ..orderBy([
+              OrderingTerm.asc(_db.schedules.date),
+              OrderingTerm.asc(_db.schedules.startTime),
+            ]))
+          .get();
+
   /// Возвращает максимальное значение server_updated_at для студента.
   /// Используется для delta sync: «с какого момента качать новые данные».
   Future<DateTime?> getMaxServerUpdatedAt(String studentId) async {

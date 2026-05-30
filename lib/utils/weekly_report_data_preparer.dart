@@ -24,10 +24,7 @@ class WeeklyReportDataPreparer {
 
     for (final record in rawRecords) {
       // ✅ Проверка на пустой/нулевой ID заменена на безопасную для строк
-      if (record.lessonId == null ||
-          record.lessonId.isEmpty ||
-          record.lessonDate == null)
-        continue;
+      if (record.lessonId.isEmpty || record.lessonDate == null) continue;
       if (uniqueLessonIds.contains(record.lessonId)) continue;
 
       uniqueLessonIds.add(record.lessonId);

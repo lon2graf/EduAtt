@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:edu_att/models/attendance_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,8 @@ import 'package:edu_att/utils/attendance_analytics_helper.dart';
 import 'package:edu_att/screens/student/widgets/attendance_stats_charts.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
+import 'package:edu_att/widgets/skeletons/skeleton_base.dart';
+import 'package:edu_att/widgets/skeletons/attendance_card_skeleton.dart';
 
 class MissesContentScreen extends ConsumerStatefulWidget {
   const MissesContentScreen({super.key});
@@ -21,6 +25,34 @@ class MissesContentScreen extends ConsumerStatefulWidget {
 class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _showCharts = false;
+
+  // true пока Drift-стрим не эмитнул хотя бы раз (или не истёк таймаут)
+  bool _isLoading = true;
+  Timer? _skeletonTimeout;
+
+  @override
+  void initState() {
+    super.initState();
+    // Если данные уже загружены (провайдер жив с предыдущего экрана) —
+    // убираем скелетон уже через следующий кадр.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(attendanceProvider).isNotEmpty) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      // Страховочный таймаут: если Drift молчит 3 секунды — скрываем скелетон
+      _skeletonTimeout = Timer(const Duration(seconds: 3), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _skeletonTimeout?.cancel();
+    super.dispose();
+  }
 
   void _goToPreviousDay() {
     setState(() {
@@ -57,6 +89,16 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
     );
     final student = ref.watch(currentStudentProvider);
 
+    // Снимаем скелетон, как только Drift-стрим эмитнул данные
+    if (_isLoading && allAttendances.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _isLoading) {
+          _skeletonTimeout?.cancel();
+          setState(() => _isLoading = false);
+        }
+      });
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -65,25 +107,34 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
             _buildTopBar(context, colorScheme, student, allAttendances),
             const SizedBox(height: 8),
             Expanded(
-              child: _showCharts
-                  ? AttendanceStatsSection(attendances: allAttendances)
-                  : RefreshIndicator(
-                      onRefresh: () async {
-                        if (student?.id != null) {
-                          await ref
-                              .read(attendanceProvider.notifier)
-                              .syncAttendanceDelta(student!.id!);
-                        }
-                      },
-                      child: _buildAttendanceList(
-                        context,
-                        AttendanceAnalyticsHelper.filterByDate(
-                          allAttendances,
-                          _selectedDate,
-                        ),
-                        allAttendances.isEmpty,
+              child: _isLoading
+                  ? EduSkeleton(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        itemCount: 4,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, __) => const AttendanceCardSkeleton(),
                       ),
-                    ),
+                    )
+                  : _showCharts
+                      ? AttendanceStatsSection(attendances: allAttendances)
+                      : RefreshIndicator(
+                          onRefresh: () async {
+                            if (student?.id != null) {
+                              await ref
+                                  .read(attendanceProvider.notifier)
+                                  .syncAttendanceDelta(student!.id!);
+                            }
+                          },
+                          child: _buildAttendanceList(
+                            context,
+                            AttendanceAnalyticsHelper.filterByDate(
+                              allAttendances,
+                              _selectedDate,
+                            ),
+                            allAttendances.isEmpty,
+                          ),
+                        ),
             ),
           ],
         ),

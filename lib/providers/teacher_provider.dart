@@ -102,6 +102,12 @@ class TeacherNotifier extends StateNotifier<TeacherModel?> {
     await SharedPreferencesService.clearAllData();
   }
 
+  /// Вход в личный режим без Supabase — устанавливает состояние из локальных данных.
+  void loginPersonal(TeacherModel teacher) {
+    state = teacher;
+    _ref.read(offlineModeProvider.notifier).state = true;
+  }
+
   bool get isLoggedIn => state != null;
 
   // ── Private helpers ────────────────────────────────────────────────────────

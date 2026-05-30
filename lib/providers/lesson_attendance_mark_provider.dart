@@ -7,6 +7,7 @@ import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/app_database_provider.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -22,8 +23,11 @@ final attendanceRepositoryProvider = Provider<IAttendanceRepository>(
 class LessonAttendanceMarkNotifier
     extends StateNotifier<List<LessonAttendanceModel>> {
   final IAttendanceRepository _repository;
+  final bool _isPersonalMode;
 
-  LessonAttendanceMarkNotifier(this._repository) : super([]);
+  LessonAttendanceMarkNotifier(this._repository, {bool isPersonalMode = false})
+      : _isPersonalMode = isPersonalMode,
+        super([]);
 
   StreamSubscription? _streamSubscription;
 
@@ -64,6 +68,7 @@ class LessonAttendanceMarkNotifier
   }
 
   void _startAttendanceStream(String lessonId) {
+    if (_isPersonalMode) return;
     _streamSubscription?.cancel();
 
     _streamSubscription = _repository.watchLesson(lessonId).listen(
@@ -107,6 +112,7 @@ class LessonAttendanceMarkNotifier
   /// Возвращает true если данные ушли на сервер, false — если только в Drift.
   Future<bool> saveAttendance() async {
     await _repository.saveLocally(state);
+    if (_isPersonalMode) return true;
     try {
       await _repository.syncToRemote();
       AppLogger.info('Посещаемость синхронизирована с сервером', 'LessonAttendanceMarkNotifier');
@@ -119,6 +125,7 @@ class LessonAttendanceMarkNotifier
 
   /// Вызывается при восстановлении соединения — отправляет все отложенные записи.
   Future<void> syncPending() async {
+    if (_isPersonalMode) return;
     try {
       await _repository.syncToRemote();
       AppLogger.info('Отложенная синхронизация посещаемости выполнена', 'LessonAttendanceMarkNotifier');
@@ -137,4 +144,9 @@ class LessonAttendanceMarkNotifier
 final lessonAttendanceMarkProvider = StateNotifierProvider<
   LessonAttendanceMarkNotifier,
   List<LessonAttendanceModel>
->((ref) => LessonAttendanceMarkNotifier(ref.watch(attendanceRepositoryProvider)));
+>(
+  (ref) => LessonAttendanceMarkNotifier(
+    ref.watch(attendanceRepositoryProvider),
+    isPersonalMode: ref.watch(personalModeProvider).isActive,
+  ),
+);

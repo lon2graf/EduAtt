@@ -10,10 +10,12 @@ import 'package:flutter_riverpod/legacy.dart';
 class ScheduleState {
   final List<ScheduleModel> schedules;
   final DateTime selectedDay;
+  final bool isLoading;
 
   const ScheduleState({
     this.schedules = const [],
     required this.selectedDay,
+    this.isLoading = false,
   });
 
   /// Lessons for the selected day, sorted by start time.
@@ -28,9 +30,11 @@ class ScheduleState {
   ScheduleState copyWith({
     List<ScheduleModel>? schedules,
     DateTime? selectedDay,
+    bool? isLoading,
   }) => ScheduleState(
     schedules: schedules ?? this.schedules,
     selectedDay: selectedDay ?? this.selectedDay,
+    isLoading: isLoading ?? this.isLoading,
   );
 }
 
@@ -58,8 +62,10 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
     _teacherId = null;
     await _cancelSubscriptions();
 
+    state = state.copyWith(isLoading: true);
+
     _driftSub = _repository.watchForGroup(groupId).listen(
-      (data) => state = state.copyWith(schedules: data),
+      (data) => state = state.copyWith(schedules: data, isLoading: false),
     );
 
     _backgroundSync();
@@ -74,8 +80,10 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
     _groupId = null;
     await _cancelSubscriptions();
 
+    state = state.copyWith(isLoading: true);
+
     _driftSub = _repository.watchForTeacher(teacherId).listen(
-      (data) => state = state.copyWith(schedules: data),
+      (data) => state = state.copyWith(schedules: data, isLoading: false),
     );
 
     _backgroundSyncTeacher();
@@ -98,7 +106,12 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
 
   @override
   void dispose() {
-    _cancelSubscriptions();
+    _driftSub?.cancel();
+    _scheduleRealtimeSub?.cancel();
+    _lessonsRealtimeSub?.cancel();
+    _driftSub = null;
+    _scheduleRealtimeSub = null;
+    _lessonsRealtimeSub = null;
     super.dispose();
   }
 

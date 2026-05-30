@@ -27,6 +27,24 @@ class LessonModel {
     this.status = LessonAttendanceStatus.free,
   });
 
+  /// True если занятие ещё не началось (используется для отображения «Скоро»).
+  bool get isUpcoming {
+    try {
+      final now = DateTime.now();
+      final parts = startTime.split(':');
+      final h = int.parse(parts[0]);
+      final m = int.parse(parts[1]);
+      return now.hour * 60 + now.minute < h * 60 + m;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String get startTimeShort {
+    final parts = startTime.split(':');
+    return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : startTime;
+  }
+
   LessonModel copyWith({LessonAttendanceStatus? status}) {
     return LessonModel(
       id: this.id,

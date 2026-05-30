@@ -34,4 +34,11 @@ abstract class IAttendanceRepository {
     required DateTime startDate,
     required DateTime endDate,
   });
+
+  /// Возвращает посещаемость группы за произвольный диапазон дат из локальной БД.
+  Future<List<LessonAttendanceModel>> getGroupAttendanceInRange({
+    required String groupId,
+    required DateTime startDate,
+    required DateTime endDate,
+  });
 }

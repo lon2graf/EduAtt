@@ -101,6 +101,12 @@ class StudentNotifier extends StateNotifier<StudentModel?> {
     await SharedPreferencesService.clearAllData();
   }
 
+  /// Вход в личный режим без Supabase — устанавливает состояние из локальных данных.
+  void loginPersonal(StudentModel student) {
+    state = student;
+    _ref.read(offlineModeProvider.notifier).state = true;
+  }
+
   bool get isLoggined => state != null;
 
   /// Validates credentials against saved SharedPreferences, then loads from Drift.

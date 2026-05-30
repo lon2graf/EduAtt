@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class SharedPreferencesService {
   static const String _userTypeKey = 'user_type';
+  static const String _personalRoleKey = 'personal_role';
   static const String _studentLoginKey = 'student_login';
   static const String _studentPasswordKey = 'student_password';
   static const String _studentInstitutionKey = 'student_institution';
@@ -111,6 +112,25 @@ class SharedPreferencesService {
     return prefs.getString(_userTypeKey);
   }
 
+  // === ЛИЧНЫЙ РЕЖИМ ===
+
+  static Future<void> savePersonalMode(String role) async {
+    final prefs = await _instance;
+    await prefs.setString(_userTypeKey, 'personal');
+    await prefs.setString(_personalRoleKey, role);
+  }
+
+  static Future<String?> getPersonalRole() async {
+    final prefs = await _instance;
+    return prefs.getString(_personalRoleKey);
+  }
+
+  static Future<bool> isPersonalMode() async {
+    return await getUserType() == 'personal';
+  }
+
+  // === ОБЩИЕ МЕТОДЫ ===
+
   static Future<void> clearAllData() async {
     final prefs = await _instance;
     await prefs.remove(_studentLoginKey);
@@ -122,6 +142,7 @@ class SharedPreferencesService {
     await prefs.remove(_teacherInstitutionKey);
     await prefs.remove(_teacherIdKey);
     await prefs.remove(_userTypeKey);
+    await prefs.remove(_personalRoleKey);
   }
 
   static Future<bool> hasSavedSession() async {
@@ -130,6 +151,8 @@ class SharedPreferencesService {
       return await getStudentCredentials() != null;
     } else if (userType == 'teacher') {
       return await getTeacherCredentials() != null;
+    } else if (userType == 'personal') {
+      return await getPersonalRole() != null;
     }
     return false;
   }

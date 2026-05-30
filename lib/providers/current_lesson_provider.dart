@@ -4,7 +4,6 @@ import 'package:edu_att/data/repositories/lesson_repository.dart';
 import 'package:edu_att/models/lesson_model.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/utils/app_logger.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider, Ref;
 import 'package:flutter_riverpod/legacy.dart';
 
 final currentLessonProvider =
@@ -28,6 +27,26 @@ class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
     final lesson = await _repository.getCurrentLessonForTeacher(teacherId);
     state = lesson;
     if (lesson?.id != null) _startStatusStream(lesson!.id!);
+  }
+
+  /// Личный режим: текущее занятие, а если его нет — ближайшее на сегодня.
+  Future<void> loadCurrentOrNextLesson(String groupId) async {
+    var lesson = await _repository.getCurrentLesson(groupId);
+    lesson ??= await _repository.getNextLesson(groupId);
+    state = lesson;
+    if (lesson?.id != null && !lesson!.isUpcoming) {
+      _startStatusStream(lesson.id!);
+    }
+  }
+
+  /// Личный режим (преподаватель): текущее или ближайшее занятие.
+  Future<void> loadCurrentOrNextLessonForTeacher(String teacherId) async {
+    var lesson = await _repository.getCurrentLessonForTeacher(teacherId);
+    lesson ??= await _repository.getNextLessonForTeacher(teacherId);
+    state = lesson;
+    if (lesson?.id != null && !lesson!.isUpcoming) {
+      _startStatusStream(lesson.id!);
+    }
   }
 
   /// Обновляет статус на сервере и локально. Офлайн-безопасен: не бросает исключение.

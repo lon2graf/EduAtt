@@ -11,6 +11,9 @@ import 'package:edu_att/screens/teacher/teacher_attendance_mark_screen.dart';
 import 'package:edu_att/screens/student/subject_absences_screen.dart';
 import 'package:edu_att/screens/lesson_chat_screen.dart';
 import 'package:edu_att/screens/schedule_screen.dart';
+import 'package:edu_att/screens/teacher/teacher_group_analytics_screen.dart';
+import 'package:edu_att/screens/personal/personal_role_select_screen.dart';
+import 'package:edu_att/screens/personal/personal_manage_screen.dart';
 
 // Глобальная переменная роутера
 final GoRouter appRouter = GoRouter(
@@ -55,6 +58,25 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/schedule',
       builder: (context, state) => const ScheduleScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/analytics',
+      builder: (context, state) {
+        final groupId = state.uri.queryParameters['group'] ?? '';
+        final groupName = state.uri.queryParameters['name'] ?? '';
+        return TeacherGroupAnalyticsScreen(
+          groupId: groupId,
+          groupName: groupName,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/personal/setup',
+      builder: (context, state) => const PersonalRoleSelectScreen(),
+    ),
+    GoRoute(
+      path: '/personal/manage',
+      builder: (context, state) => const PersonalManageScreen(),
     ),
   ],
 );

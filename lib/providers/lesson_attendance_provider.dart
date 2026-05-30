@@ -3,16 +3,20 @@ import 'dart:async';
 import 'package:edu_att/data/repositories/i_attendance_repository.dart';
 import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
   final IAttendanceRepository _repository;
+  final bool _isPersonalMode;
 
   StreamSubscription<List<LessonAttendanceModel>>? _driftSub;
   StreamSubscription<List<Map<String, dynamic>>>? _realtimeSub;
 
-  AttendanceNotifier(this._repository) : super([]);
+  AttendanceNotifier(this._repository, {bool isPersonalMode = false})
+      : _isPersonalMode = isPersonalMode,
+        super([]);
 
   /// Подписывается на Drift-стрим (SSoT для UI) + Supabase real-time + delta sync.
   Future<void> initStudentStream(String studentId) async {
@@ -30,6 +34,8 @@ class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
       ),
     );
 
+    if (_isPersonalMode) return;
+
     // 2. Supabase real-time → в БД, не напрямую в state
     _realtimeSub =
         _repository.watchRemoteStudent(studentId).listen(
@@ -45,8 +51,10 @@ class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
   }
 
   /// Ручной delta sync (pull-to-refresh).
-  Future<void> syncAttendanceDelta(String studentId) =>
-      _repository.syncDelta(studentId);
+  Future<void> syncAttendanceDelta(String studentId) {
+    if (_isPersonalMode) return Future.value();
+    return _repository.syncDelta(studentId);
+  }
 
   void _backgroundSync(String studentId) {
     _repository.syncDelta(studentId).catchError(
@@ -75,5 +83,8 @@ class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
 
 final attendanceProvider =
     StateNotifierProvider<AttendanceNotifier, List<LessonAttendanceModel>>(
-      (ref) => AttendanceNotifier(ref.watch(attendanceRepositoryProvider)),
+      (ref) => AttendanceNotifier(
+        ref.watch(attendanceRepositoryProvider),
+        isPersonalMode: ref.watch(personalModeProvider).isActive,
+      ),
     );

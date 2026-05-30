@@ -41,6 +41,14 @@ class LessonRepository {
     }
   }
 
+  /// Ближайшее занятие сегодня (только Drift — для Личного режима).
+  Future<LessonModel?> getNextLesson(String groupId) =>
+      _dao.getNextForGroup(groupId);
+
+  /// Ближайшее занятие сегодня для преподавателя (только Drift).
+  Future<LessonModel?> getNextLessonForTeacher(String teacherId) =>
+      _dao.getNextForTeacher(teacherId);
+
   /// Обновляет статус: сначала на сервере (best-effort), затем локально в Drift.
   Future<void> updateStatus(String lessonId, LessonAttendanceStatus status) async {
     try {

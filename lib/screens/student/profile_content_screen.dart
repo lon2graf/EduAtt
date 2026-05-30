@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/models/student_model.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/theme/theme_provider.dart';
 import 'package:edu_att/theme/app_theme_type.dart';
-import 'package:edu_att/mascot/mascot_widget.dart';
-import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/providers/frosya_provider.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:edu_att/widgets/modals/logout_confirm_dialog.dart';
 
 class ProfileContentScreen extends ConsumerWidget {
   const ProfileContentScreen({super.key});
@@ -65,7 +65,7 @@ class ProfileContentScreen extends ConsumerWidget {
                         color: colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: colorScheme.outlineVariant.withOpacity(0.5),
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Column(
@@ -75,9 +75,24 @@ class ProfileContentScreen extends ConsumerWidget {
                             height: 1,
                             indent: 16,
                             endIndent: 16,
-                            color: colorScheme.outlineVariant.withOpacity(0.5),
+                            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                           ),
                           _buildThemeSelector(context, ref),
+                          if (ref.watch(personalModeProvider).isActive) ...[
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.settings_suggest_outlined),
+                              title: const Text('Управление данными'),
+                              subtitle: const Text('Предметы, расписание, бэкап'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push('/personal/manage'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -207,7 +222,7 @@ class ProfileContentScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,9 +271,15 @@ class ProfileContentScreen extends ConsumerWidget {
         width: double.infinity,
         height: 54,
         child: TextButton.icon(
-          onPressed: () {
+          onPressed: () async {
+            final isPersonal = ref.read(personalModeProvider).isActive;
+            if (isPersonal) {
+              final confirmed = await showPersonalLogoutDialog(context, ref);
+              if (!confirmed || !context.mounted) return;
+            }
             ref.read(currentStudentProvider.notifier).logout();
-            context.go('/');
+            ref.read(personalModeProvider.notifier).deactivate();
+            if (context.mounted) context.go('/');
           },
           icon: const Icon(Icons.logout_rounded, color: Colors.red),
           label: const Text(
@@ -270,7 +291,7 @@ class ProfileContentScreen extends ConsumerWidget {
             ),
           ),
           style: TextButton.styleFrom(
-            backgroundColor: Colors.red.withOpacity(0.1),
+            backgroundColor: Colors.red.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),

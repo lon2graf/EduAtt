@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:edu_att/models/attendance_status.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Для вибрации
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:edu_att/models/student_model.dart';
@@ -26,10 +28,64 @@ class _TeacherAttendanceMarkScreenState
   int currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  Timer? _autoAdvanceTimer;
+
+  @override
+  void dispose() {
+    _autoAdvanceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _scheduleAutoAdvance(int total) {
+    _autoAdvanceTimer?.cancel();
+    if (currentIndex >= total - 1) return;
+    _autoAdvanceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => currentIndex++);
+    });
+  }
+
+  void _markAllPresent(List<StudentModel> students) {
+    HapticFeedback.mediumImpact();
+    final notifier = ref.read(lessonAttendanceMarkProvider.notifier);
+    for (final student in students) {
+      notifier.setAttendanceStatus(student.id!, AttendanceStatus.present);
+    }
+  }
+
+  void _showMarkAllDialog(BuildContext context, List<StudentModel> students) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Отметить всех?'),
+        content: Text(
+          'Все ${students.length} студентов получат статус «Присутствует».\n'
+          'Отдельные отметки можно изменить после.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _markAllPresent(students);
+            },
+            icon: const Icon(Icons.done_all, size: 18),
+            label: const Text('Отметить всех'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     final students = ref.watch(groupStudentsProvider);
     final attendanceList = ref.watch(lessonAttendanceMarkProvider);
@@ -39,16 +95,32 @@ class _TeacherAttendanceMarkScreenState
       return _loadingScreen(context);
     }
 
+    final attendanceMap = {for (final a in attendanceList) a.studentId: a};
+
     final student = students[currentIndex];
-    final studentAttendance = attendanceList.firstWhere(
-      (a) => a.studentId == student.id,
-      orElse: () => attendanceList.first,
-    );
+    final studentAttendance = attendanceMap[student.id] ?? attendanceList.first;
+
+    final unmarked = attendanceList.where((a) => a.status == null).length;
+
+    final filteredStudents = _searchQuery.isEmpty
+        ? students
+        : students
+            .where(
+              (s) =>
+                  '${s.surname} ${s.name}'
+                      .toLowerCase()
+                      .contains(_searchQuery.toLowerCase()),
+            )
+            .toList();
 
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Text("Студент ${currentIndex + 1} / ${students.length}"),
+        title: Text(
+          unmarked > 0
+              ? 'Студент ${currentIndex + 1} / ${students.length}  •  осталось $unmarked'
+              : 'Студент ${currentIndex + 1} / ${students.length}  ✓',
+        ),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
@@ -56,7 +128,13 @@ class _TeacherAttendanceMarkScreenState
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: 'Все присутствуют',
+            onPressed: () => _showMarkAllDialog(context, students),
+          ),
+          IconButton(
             icon: const Icon(Icons.list_alt),
+            tooltip: 'Список группы',
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
           ),
         ],
@@ -64,61 +142,161 @@ class _TeacherAttendanceMarkScreenState
       endDrawer: Drawer(
         child: Column(
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: colorScheme.primary),
-              child: Center(
-                child: Text(
-                  "Список группы",
-                  style: TextStyle(
-                    color: colorScheme.onPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+            // Шапка с поиском
+            Material(
+              color: colorScheme.primary,
+              elevation: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Список группы',
+                            style: TextStyle(
+                              color: colorScheme.onPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? '${students.length} чел.'
+                                : '${filteredStudents.length} / ${students.length}',
+                            style: TextStyle(
+                              color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        style: TextStyle(
+                          color: colorScheme.onPrimary,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Поиск по фамилии...',
+                          hintStyle: TextStyle(
+                            color: colorScheme.onPrimary.withValues(alpha: 0.5),
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                            size: 20,
+                          ),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: colorScheme.onPrimary
+                                        .withValues(alpha: 0.7),
+                                    size: 18,
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: colorScheme.onPrimary.withValues(alpha: 0.15),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
+
+            // Список студентов
             Expanded(
-              child: ListView.builder(
-                itemCount: students.length,
-                itemBuilder: (context, index) {
-                  final s = students[index];
-                  final a = attendanceList.firstWhere(
-                    (att) => att.studentId == s.id,
-                    orElse: () => attendanceList.first,
-                  );
-
-                  String statusText = "Не отмечен";
-                  Color statusColor = Colors.grey;
-                  if (a.status == AttendanceStatus.present) {
-                    statusText = "Есть";
-                    statusColor = Colors.green;
-                  } else if (a.status == AttendanceStatus.absent) {
-                    statusText = "Нет";
-                    statusColor = Colors.red;
-                  } else if (a.status == AttendanceStatus.late) {
-                    statusText = "Опоздал";
-                    statusColor = Colors.orange;
-                  }
-
-                  return ListTile(
-                    title: Text('${s.surname} ${s.name}'),
-                    subtitle: Text(
-                      statusText,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+              child: filteredStudents.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 48,
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Не найдено',
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
+                    )
+                  : ListView.builder(
+                      itemCount: filteredStudents.length,
+                      itemBuilder: (context, index) {
+                        final s = filteredStudents[index];
+                        final fullIndex = students.indexOf(s);
+                        final a = attendanceMap[s.id] ?? attendanceList.first;
+
+                        String statusText = 'Не отмечен';
+                        Color statusColor = Colors.grey;
+                        if (a.status == AttendanceStatus.present) {
+                          statusText = 'Есть';
+                          statusColor = Colors.green;
+                        } else if (a.status == AttendanceStatus.absent) {
+                          statusText = 'Нет';
+                          statusColor = Colors.red;
+                        } else if (a.status == AttendanceStatus.late) {
+                          statusText = 'Опоздал';
+                          statusColor = Colors.orange;
+                        }
+
+                        return ListTile(
+                          title: Text('${s.surname} ${s.name}'),
+                          subtitle: Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.circle,
+                            size: 10,
+                            color: statusColor,
+                          ),
+                          selected: fullIndex == currentIndex,
+                          onTap: () {
+                            _autoAdvanceTimer?.cancel();
+                            setState(() {
+                              currentIndex = fullIndex;
+                              _searchController.clear();
+                              _searchQuery = '';
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
                     ),
-                    trailing: Icon(Icons.circle, size: 10, color: statusColor),
-                    selected: index == currentIndex,
-                    onTap: () {
-                      setState(() => currentIndex = index);
-                      Navigator.pop(context); // Закрываем боковую панель
-                    },
-                  );
-                },
-              ),
             ),
           ],
         ),
@@ -128,34 +306,27 @@ class _TeacherAttendanceMarkScreenState
         child: Column(
           children: [
             const Spacer(),
-            // --- Карточка студента ---
             _buildStudentCard(context, student),
-
             const SizedBox(height: 32),
-
-            // --- Кнопки выбора ---
-            _buildStatusSelector(student.id!, studentAttendance.status),
-
+            _buildStatusSelector(student.id!, studentAttendance.status, students.length),
             const Spacer(),
-
-            // --- Управление навигацией и Подтверждение ---
             Padding(
               padding: const EdgeInsets.only(bottom: 40),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    onPressed:
-                        currentIndex > 0
-                            ? () {
-                              HapticFeedback.lightImpact();
-                              setState(() => currentIndex--);
-                            }
-                            : null,
+                    onPressed: currentIndex > 0
+                        ? () {
+                            HapticFeedback.lightImpact();
+                            _autoAdvanceTimer?.cancel();
+                            setState(() => currentIndex--);
+                          }
+                        : null,
                     icon: const Icon(Icons.chevron_left, size: 44),
                   ),
                   Text(
-                    "${currentIndex + 1} / ${students.length}",
+                    '${currentIndex + 1} / ${students.length}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -163,12 +334,13 @@ class _TeacherAttendanceMarkScreenState
                   ),
                   currentIndex < students.length - 1
                       ? IconButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          setState(() => currentIndex++);
-                        },
-                        icon: const Icon(Icons.chevron_right, size: 44),
-                      )
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            _autoAdvanceTimer?.cancel();
+                            setState(() => currentIndex++);
+                          },
+                          icon: const Icon(Icons.chevron_right, size: 44),
+                        )
                       : _buildConfirmButton(context, lesson),
                 ],
               ),
@@ -205,14 +377,15 @@ class _TeacherAttendanceMarkScreenState
 
   Widget _buildStudentCard(BuildContext context, StudentModel student) {
     final colorScheme = Theme.of(context).colorScheme;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         children: [
@@ -234,6 +407,7 @@ class _TeacherAttendanceMarkScreenState
   Widget _buildStatusSelector(
     String studentId,
     AttendanceStatus? currentStatus,
+    int total,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
@@ -247,26 +421,29 @@ class _TeacherAttendanceMarkScreenState
           _statusOption(
             studentId,
             AttendanceStatus.present,
-            "Есть",
+            'Есть',
             Icons.check,
             Colors.green,
             currentStatus == AttendanceStatus.present,
+            total,
           ),
           _statusOption(
             studentId,
             AttendanceStatus.absent,
-            "Нет",
+            'Нет',
             Icons.close,
             Colors.red,
             currentStatus == AttendanceStatus.absent,
+            total,
           ),
           _statusOption(
             studentId,
             AttendanceStatus.late,
-            "Опоздал",
+            'Опоздал',
             Icons.access_time,
             Colors.orange,
             currentStatus == AttendanceStatus.late,
+            total,
           ),
         ],
       ),
@@ -280,6 +457,7 @@ class _TeacherAttendanceMarkScreenState
     IconData icon,
     Color color,
     bool isSelected,
+    int total,
   ) {
     return Expanded(
       child: Padding(
@@ -290,6 +468,7 @@ class _TeacherAttendanceMarkScreenState
             ref
                 .read(lessonAttendanceMarkProvider.notifier)
                 .setAttendanceStatus(studentId, status);
+            _scheduleAutoAdvance(total);
           },
           icon: Icon(icon, size: 16),
           label: Text(
@@ -319,8 +498,15 @@ class _TeacherAttendanceMarkScreenState
               .read(lessonAttendanceMarkProvider.notifier)
               .saveAttendance();
         } catch (e) {
-          AppLogger.error('Ошибка локального сохранения посещаемости', e, null, 'TeacherAttendanceMarkScreen');
-          if (context.mounted) EduSnackBar.showError(context, ref, 'Ошибка сохранения');
+          AppLogger.error(
+            'Ошибка локального сохранения посещаемости',
+            e,
+            null,
+            'TeacherAttendanceMarkScreen',
+          );
+          if (context.mounted) {
+            EduSnackBar.showError(context, ref, 'Ошибка сохранения');
+          }
           return;
         }
 
@@ -333,7 +519,11 @@ class _TeacherAttendanceMarkScreenState
           if (synced) {
             EduSnackBar.showSuccess(context, ref, 'Ведомость подтверждена!');
           } else {
-            EduSnackBar.showInfo(context, ref, 'Сохранено локально, отправим при подключении');
+            EduSnackBar.showInfo(
+              context,
+              ref,
+              'Сохранено локально, отправим при подключении',
+            );
           }
         }
       },
@@ -345,7 +535,7 @@ class _TeacherAttendanceMarkScreenState
         elevation: 0,
       ),
       child: const Text(
-        "Подтвердить",
+        'Подтвердить',
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );

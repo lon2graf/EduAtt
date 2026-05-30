@@ -15,6 +15,7 @@ import 'package:edu_att/providers/current_lesson_provider.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/connectivity_provider.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
 
 // Репозитории и Утилиты
@@ -107,9 +108,16 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       await ref
           .read(attendanceProvider.notifier)
           .initStudentStream(student.id!);
-      await ref
-          .read(currentLessonProvider.notifier)
-          .loadCurrentLesson(student.groupId);
+      final isPersonal = ref.read(personalModeProvider).isActive;
+      if (isPersonal) {
+        await ref
+            .read(currentLessonProvider.notifier)
+            .loadCurrentOrNextLesson(student.groupId);
+      } else {
+        await ref
+            .read(currentLessonProvider.notifier)
+            .loadCurrentLesson(student.groupId);
+      }
     }
   }
 
@@ -326,7 +334,7 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLiveBadge(),
+                    _buildLiveBadge(lesson),
                     const SizedBox(height: 12),
 
                     // Время (теперь оно сразу под бэйджем LIVE)
@@ -389,21 +397,24 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     );
   }
 
-  Widget _buildLiveBadge() {
+  Widget _buildLiveBadge(LessonModel lesson) {
+    final upcoming = lesson.isUpcoming;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.redAccent,
+        color: upcoming ? Colors.blueAccent : Colors.redAccent,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          LiveIndicator(),
-          SizedBox(width: 8),
+          if (!upcoming) const LiveIndicator(),
+          if (!upcoming) const SizedBox(width: 8),
+          if (upcoming) const Icon(Icons.access_time, size: 10, color: Colors.white),
+          if (upcoming) const SizedBox(width: 4),
           Text(
-            'LIVE',
-            style: TextStyle(
+            upcoming ? 'СКОРО' : 'LIVE',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -429,38 +440,43 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       (a) => a.lessonId == lesson.id && a.status == AttendanceStatus.present,
     );
 
+    final isPersonal = ref.read(personalModeProvider).isActive;
+    // В личном режиме любой студент управляет своей ведомостью как «старosta»
+    final actAsHeadman = student.isHeadman || isPersonal;
+
     return Row(
       children: [
-        // ЧАТ
-        Expanded(
-          flex: 2,
-          child: ElevatedButton(
-            onPressed: () => context.go('/lesson_chat'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+        // ЧАТ — скрыт в личном режиме
+        if (!isPersonal) ...[
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: () => context.go('/lesson_chat'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
+              child: const Icon(Icons.chat_bubble_outline, size: 20),
             ),
-            child: const Icon(Icons.chat_bubble_outline, size: 20),
           ),
-        ),
-        const SizedBox(width: 12),
+          const SizedBox(width: 12),
+        ],
         // ДЕЙСТВИЕ
         Expanded(
-          flex: 5,
-          child:
-              student.isHeadman
-                  ? _buildHeadmanButton(context, lesson, isOffline)
-                  : _buildStudentPresenceButton(
-                    context,
-                    lesson,
-                    student,
-                    isMarked,
-                  ),
+          flex: isPersonal ? 7 : 5,
+          child: actAsHeadman
+              ? _buildHeadmanButton(context, lesson, isOffline)
+              : _buildStudentPresenceButton(
+                  context,
+                  lesson,
+                  student,
+                  isMarked,
+                ),
         ),
       ],
     );
@@ -516,8 +532,10 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       opacity: isOffline ? 0.6 : 1.0,
       child: ElevatedButton.icon(
       onPressed:
-          (isLocked || _isPreparing)
-              ? () => isLocked ? EduSnackBar.showForbidden(context, ref) : null
+          isLocked
+              ? () => EduSnackBar.showForbidden(context, ref)
+              : _isPreparing
+              ? null
               : isOffline
               ? () => EduSnackBar.showInfo(context, ref, 'Для работы с ведомостью нужен интернет')
               : () async {

@@ -6,6 +6,10 @@ import 'package:edu_att/models/schedule_model.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
 import 'package:edu_att/providers/student_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
+import 'package:edu_att/providers/personal_mode_provider.dart';
+import 'package:edu_att/screens/personal/schedule_entry_sheet.dart';
+import 'package:edu_att/widgets/skeletons/skeleton_base.dart';
+import 'package:edu_att/widgets/skeletons/schedule_card_skeleton.dart';
 
 // Короткие названия дней недели (DateTime.weekday: 1=Пн … 7=Вс)
 const _kWeekdayNames = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -66,6 +70,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final isPersonal = ref.watch(personalModeProvider).isActive;
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
@@ -75,6 +81,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
       ),
+      floatingActionButton: isPersonal
+          ? FloatingActionButton(
+              tooltip: 'Добавить занятие',
+              onPressed: () => showScheduleEntrySheet(context),
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Column(
         children: [
           _WeekStrip(
@@ -88,10 +101,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: _ScheduleBody(state: state),
-            ),
+            child: isPersonal
+                ? _ScheduleBody(state: state)
+                : RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    child: _ScheduleBody(state: state),
+                  ),
           ),
         ],
       ),
@@ -243,6 +258,17 @@ class _ScheduleBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ── Скелетон при загрузке ──────────────────────────────────────────────
+    if (state.isLoading) {
+      return EduSkeleton(
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          itemCount: 5,
+          itemBuilder: (_, __) => const ScheduleCardSkeleton(),
+        ),
+      );
+    }
+
     final items = state.schedulesForDay;
 
     if (items.isEmpty) {

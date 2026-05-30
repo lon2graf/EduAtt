@@ -6,6 +6,10 @@ import 'package:edu_att/mascot/mascot_manager.dart';
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
 
+  void _openPersonalMode(BuildContext context) {
+    context.push('/personal/setup');
+  }
+
   @override
   Widget build(BuildContext context) {
     // Получаем текущую тему
@@ -34,7 +38,7 @@ class MainMenuScreen extends StatelessWidget {
                   letterSpacing: 1.6,
                   shadows: [
                     Shadow(
-                      color: colorScheme.shadow.withOpacity(0.1),
+                      color: colorScheme.shadow.withValues(alpha: 0.1),
                       blurRadius: 6,
                       offset: const Offset(0, 3),
                     ),
@@ -59,6 +63,16 @@ class MainMenuScreen extends StatelessWidget {
                 title: 'Вход преподавателя',
                 onPressed: () => context.go('/login_teacher'),
               ),
+              const SizedBox(height: 20),
+
+              // Кнопка "Личный режим"
+              _buildMenuButton(
+                context,
+                icon: Icons.offline_bolt_rounded,
+                title: 'Личный режим',
+                onPressed: () => _openPersonalMode(context),
+                secondary: true,
+              ),
             ],
           ),
         ),
@@ -71,12 +85,16 @@ class MainMenuScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onPressed,
+    bool secondary = false,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     final screenWidth = MediaQuery.of(context).size.width;
     final maxWidth = screenWidth > 360 ? 280.0 : screenWidth * 0.85;
+
+    final bg = secondary ? colorScheme.surfaceContainerHighest : colorScheme.primary;
+    final fg = secondary ? colorScheme.onSurface : colorScheme.onPrimary;
 
     return SizedBox(
       width: maxWidth,
@@ -91,13 +109,15 @@ class MainMenuScreen extends StatelessWidget {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
-          // Используем цвета из ColorScheme
-          backgroundColor: colorScheme.primary, // Фиолетовый фон
-          foregroundColor: colorScheme.onPrimary, // Белый текст на фиолетовом
-          elevation: 4,
-          shadowColor: colorScheme.shadow.withOpacity(0.3),
+          backgroundColor: bg,
+          foregroundColor: fg,
+          elevation: secondary ? 0 : 4,
+          shadowColor: colorScheme.shadow.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
+            side: secondary
+                ? BorderSide(color: colorScheme.outlineVariant)
+                : BorderSide.none,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
