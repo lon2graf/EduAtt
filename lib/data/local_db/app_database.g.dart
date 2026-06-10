@@ -2595,6 +2595,20 @@ class $LessonAttendancesTable extends LessonAttendances
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _isExcusedMeta = const VerificationMeta(
+    'isExcused',
+  );
+  @override
+  late final GeneratedColumn<bool> isExcused = GeneratedColumn<bool>(
+    'is_excused',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_excused" IN (0, 1))',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2604,6 +2618,7 @@ class $LessonAttendancesTable extends LessonAttendances
     isSynced,
     updatedAt,
     serverUpdatedAt,
+    isExcused,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2665,6 +2680,12 @@ class $LessonAttendancesTable extends LessonAttendances
         ),
       );
     }
+    if (data.containsKey('is_excused')) {
+      context.handle(
+        _isExcusedMeta,
+        isExcused.isAcceptableOrUnknown(data['is_excused']!, _isExcusedMeta),
+      );
+    }
     return context;
   }
 
@@ -2706,6 +2727,10 @@ class $LessonAttendancesTable extends LessonAttendances
         DriftSqlType.dateTime,
         data['${effectivePrefix}server_updated_at'],
       ),
+      isExcused: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_excused'],
+      ),
     );
   }
 
@@ -2724,6 +2749,7 @@ class LessonAttendance extends DataClass
   final bool isSynced;
   final DateTime? updatedAt;
   final DateTime? serverUpdatedAt;
+  final bool? isExcused;
   const LessonAttendance({
     required this.id,
     required this.lessonId,
@@ -2732,6 +2758,7 @@ class LessonAttendance extends DataClass
     required this.isSynced,
     this.updatedAt,
     this.serverUpdatedAt,
+    this.isExcused,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2748,6 +2775,9 @@ class LessonAttendance extends DataClass
     }
     if (!nullToAbsent || serverUpdatedAt != null) {
       map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt);
+    }
+    if (!nullToAbsent || isExcused != null) {
+      map['is_excused'] = Variable<bool>(isExcused);
     }
     return map;
   }
@@ -2768,6 +2798,10 @@ class LessonAttendance extends DataClass
           serverUpdatedAt == null && nullToAbsent
               ? const Value.absent()
               : Value(serverUpdatedAt),
+      isExcused:
+          isExcused == null && nullToAbsent
+              ? const Value.absent()
+              : Value(isExcused),
     );
   }
 
@@ -2784,6 +2818,7 @@ class LessonAttendance extends DataClass
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       serverUpdatedAt: serializer.fromJson<DateTime?>(json['serverUpdatedAt']),
+      isExcused: serializer.fromJson<bool?>(json['isExcused']),
     );
   }
   @override
@@ -2797,6 +2832,7 @@ class LessonAttendance extends DataClass
       'isSynced': serializer.toJson<bool>(isSynced),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'serverUpdatedAt': serializer.toJson<DateTime?>(serverUpdatedAt),
+      'isExcused': serializer.toJson<bool?>(isExcused),
     };
   }
 
@@ -2808,6 +2844,7 @@ class LessonAttendance extends DataClass
     bool? isSynced,
     Value<DateTime?> updatedAt = const Value.absent(),
     Value<DateTime?> serverUpdatedAt = const Value.absent(),
+    Value<bool?> isExcused = const Value.absent(),
   }) => LessonAttendance(
     id: id ?? this.id,
     lessonId: lessonId ?? this.lessonId,
@@ -2817,6 +2854,7 @@ class LessonAttendance extends DataClass
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
     serverUpdatedAt:
         serverUpdatedAt.present ? serverUpdatedAt.value : this.serverUpdatedAt,
+    isExcused: isExcused.present ? isExcused.value : this.isExcused,
   );
   LessonAttendance copyWithCompanion(LessonAttendancesCompanion data) {
     return LessonAttendance(
@@ -2830,6 +2868,7 @@ class LessonAttendance extends DataClass
           data.serverUpdatedAt.present
               ? data.serverUpdatedAt.value
               : this.serverUpdatedAt,
+      isExcused: data.isExcused.present ? data.isExcused.value : this.isExcused,
     );
   }
 
@@ -2842,7 +2881,8 @@ class LessonAttendance extends DataClass
           ..write('status: $status, ')
           ..write('isSynced: $isSynced, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('serverUpdatedAt: $serverUpdatedAt')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
+          ..write('isExcused: $isExcused')
           ..write(')'))
         .toString();
   }
@@ -2856,6 +2896,7 @@ class LessonAttendance extends DataClass
     isSynced,
     updatedAt,
     serverUpdatedAt,
+    isExcused,
   );
   @override
   bool operator ==(Object other) =>
@@ -2867,7 +2908,8 @@ class LessonAttendance extends DataClass
           other.status == this.status &&
           other.isSynced == this.isSynced &&
           other.updatedAt == this.updatedAt &&
-          other.serverUpdatedAt == this.serverUpdatedAt);
+          other.serverUpdatedAt == this.serverUpdatedAt &&
+          other.isExcused == this.isExcused);
 }
 
 class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
@@ -2878,6 +2920,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
   final Value<bool> isSynced;
   final Value<DateTime?> updatedAt;
   final Value<DateTime?> serverUpdatedAt;
+  final Value<bool?> isExcused;
   final Value<int> rowid;
   const LessonAttendancesCompanion({
     this.id = const Value.absent(),
@@ -2887,6 +2930,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     this.isSynced = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.serverUpdatedAt = const Value.absent(),
+    this.isExcused = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LessonAttendancesCompanion.insert({
@@ -2897,6 +2941,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     this.isSynced = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.serverUpdatedAt = const Value.absent(),
+    this.isExcused = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        lessonId = Value(lessonId),
@@ -2909,6 +2954,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     Expression<bool>? isSynced,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? serverUpdatedAt,
+    Expression<bool>? isExcused,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2919,6 +2965,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
       if (isSynced != null) 'is_synced': isSynced,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
+      if (isExcused != null) 'is_excused': isExcused,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2931,6 +2978,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     Value<bool>? isSynced,
     Value<DateTime?>? updatedAt,
     Value<DateTime?>? serverUpdatedAt,
+    Value<bool?>? isExcused,
     Value<int>? rowid,
   }) {
     return LessonAttendancesCompanion(
@@ -2941,6 +2989,7 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
       isSynced: isSynced ?? this.isSynced,
       updatedAt: updatedAt ?? this.updatedAt,
       serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
+      isExcused: isExcused ?? this.isExcused,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2969,6 +3018,9 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
     if (serverUpdatedAt.present) {
       map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt.value);
     }
+    if (isExcused.present) {
+      map['is_excused'] = Variable<bool>(isExcused.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2985,6 +3037,638 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
           ..write('isSynced: $isSynced, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('serverUpdatedAt: $serverUpdatedAt, ')
+          ..write('isExcused: $isExcused, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ExcuseRequestsTable extends ExcuseRequests
+    with TableInfo<$ExcuseRequestsTable, ExcuseRequest> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExcuseRequestsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lessonIdMeta = const VerificationMeta(
+    'lessonId',
+  );
+  @override
+  late final GeneratedColumn<String> lessonId = GeneratedColumn<String>(
+    'lesson_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES lessons (id)',
+    ),
+  );
+  static const VerificationMeta _studentIdMeta = const VerificationMeta(
+    'studentId',
+  );
+  @override
+  late final GeneratedColumn<String> studentId = GeneratedColumn<String>(
+    'student_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES students (id)',
+    ),
+  );
+  static const VerificationMeta _reasonTypeMeta = const VerificationMeta(
+    'reasonType',
+  );
+  @override
+  late final GeneratedColumn<String> reasonType = GeneratedColumn<String>(
+    'reason_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reviewedByMeta = const VerificationMeta(
+    'reviewedBy',
+  );
+  @override
+  late final GeneratedColumn<String> reviewedBy = GeneratedColumn<String>(
+    'reviewed_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reviewedAtMeta = const VerificationMeta(
+    'reviewedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> reviewedAt = GeneratedColumn<DateTime>(
+    'reviewed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    lessonId,
+    studentId,
+    reasonType,
+    description,
+    status,
+    createdAt,
+    reviewedBy,
+    reviewedAt,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'excuse_requests';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExcuseRequest> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('lesson_id')) {
+      context.handle(
+        _lessonIdMeta,
+        lessonId.isAcceptableOrUnknown(data['lesson_id']!, _lessonIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lessonIdMeta);
+    }
+    if (data.containsKey('student_id')) {
+      context.handle(
+        _studentIdMeta,
+        studentId.isAcceptableOrUnknown(data['student_id']!, _studentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_studentIdMeta);
+    }
+    if (data.containsKey('reason_type')) {
+      context.handle(
+        _reasonTypeMeta,
+        reasonType.isAcceptableOrUnknown(data['reason_type']!, _reasonTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonTypeMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('reviewed_by')) {
+      context.handle(
+        _reviewedByMeta,
+        reviewedBy.isAcceptableOrUnknown(data['reviewed_by']!, _reviewedByMeta),
+      );
+    }
+    if (data.containsKey('reviewed_at')) {
+      context.handle(
+        _reviewedAtMeta,
+        reviewedAt.isAcceptableOrUnknown(data['reviewed_at']!, _reviewedAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExcuseRequest map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExcuseRequest(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      lessonId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}lesson_id'],
+          )!,
+      studentId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}student_id'],
+          )!,
+      reasonType:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}reason_type'],
+          )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      status:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}status'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      reviewedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reviewed_by'],
+      ),
+      reviewedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reviewed_at'],
+      ),
+      isSynced:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_synced'],
+          )!,
+    );
+  }
+
+  @override
+  $ExcuseRequestsTable createAlias(String alias) {
+    return $ExcuseRequestsTable(attachedDatabase, alias);
+  }
+}
+
+class ExcuseRequest extends DataClass implements Insertable<ExcuseRequest> {
+  final String id;
+  final String lessonId;
+  final String studentId;
+  final String reasonType;
+  final String? description;
+  final String status;
+  final DateTime createdAt;
+  final String? reviewedBy;
+  final DateTime? reviewedAt;
+  final bool isSynced;
+  const ExcuseRequest({
+    required this.id,
+    required this.lessonId,
+    required this.studentId,
+    required this.reasonType,
+    this.description,
+    required this.status,
+    required this.createdAt,
+    this.reviewedBy,
+    this.reviewedAt,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['lesson_id'] = Variable<String>(lessonId);
+    map['student_id'] = Variable<String>(studentId);
+    map['reason_type'] = Variable<String>(reasonType);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || reviewedBy != null) {
+      map['reviewed_by'] = Variable<String>(reviewedBy);
+    }
+    if (!nullToAbsent || reviewedAt != null) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt);
+    }
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  ExcuseRequestsCompanion toCompanion(bool nullToAbsent) {
+    return ExcuseRequestsCompanion(
+      id: Value(id),
+      lessonId: Value(lessonId),
+      studentId: Value(studentId),
+      reasonType: Value(reasonType),
+      description:
+          description == null && nullToAbsent
+              ? const Value.absent()
+              : Value(description),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      reviewedBy:
+          reviewedBy == null && nullToAbsent
+              ? const Value.absent()
+              : Value(reviewedBy),
+      reviewedAt:
+          reviewedAt == null && nullToAbsent
+              ? const Value.absent()
+              : Value(reviewedAt),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory ExcuseRequest.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExcuseRequest(
+      id: serializer.fromJson<String>(json['id']),
+      lessonId: serializer.fromJson<String>(json['lessonId']),
+      studentId: serializer.fromJson<String>(json['studentId']),
+      reasonType: serializer.fromJson<String>(json['reasonType']),
+      description: serializer.fromJson<String?>(json['description']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      reviewedBy: serializer.fromJson<String?>(json['reviewedBy']),
+      reviewedAt: serializer.fromJson<DateTime?>(json['reviewedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'lessonId': serializer.toJson<String>(lessonId),
+      'studentId': serializer.toJson<String>(studentId),
+      'reasonType': serializer.toJson<String>(reasonType),
+      'description': serializer.toJson<String?>(description),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'reviewedBy': serializer.toJson<String?>(reviewedBy),
+      'reviewedAt': serializer.toJson<DateTime?>(reviewedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  ExcuseRequest copyWith({
+    String? id,
+    String? lessonId,
+    String? studentId,
+    String? reasonType,
+    Value<String?> description = const Value.absent(),
+    String? status,
+    DateTime? createdAt,
+    Value<String?> reviewedBy = const Value.absent(),
+    Value<DateTime?> reviewedAt = const Value.absent(),
+    bool? isSynced,
+  }) => ExcuseRequest(
+    id: id ?? this.id,
+    lessonId: lessonId ?? this.lessonId,
+    studentId: studentId ?? this.studentId,
+    reasonType: reasonType ?? this.reasonType,
+    description: description.present ? description.value : this.description,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    reviewedBy: reviewedBy.present ? reviewedBy.value : this.reviewedBy,
+    reviewedAt: reviewedAt.present ? reviewedAt.value : this.reviewedAt,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  ExcuseRequest copyWithCompanion(ExcuseRequestsCompanion data) {
+    return ExcuseRequest(
+      id: data.id.present ? data.id.value : this.id,
+      lessonId: data.lessonId.present ? data.lessonId.value : this.lessonId,
+      studentId: data.studentId.present ? data.studentId.value : this.studentId,
+      reasonType:
+          data.reasonType.present ? data.reasonType.value : this.reasonType,
+      description:
+          data.description.present ? data.description.value : this.description,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      reviewedBy:
+          data.reviewedBy.present ? data.reviewedBy.value : this.reviewedBy,
+      reviewedAt:
+          data.reviewedAt.present ? data.reviewedAt.value : this.reviewedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExcuseRequest(')
+          ..write('id: $id, ')
+          ..write('lessonId: $lessonId, ')
+          ..write('studentId: $studentId, ')
+          ..write('reasonType: $reasonType, ')
+          ..write('description: $description, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('reviewedBy: $reviewedBy, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    lessonId,
+    studentId,
+    reasonType,
+    description,
+    status,
+    createdAt,
+    reviewedBy,
+    reviewedAt,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExcuseRequest &&
+          other.id == this.id &&
+          other.lessonId == this.lessonId &&
+          other.studentId == this.studentId &&
+          other.reasonType == this.reasonType &&
+          other.description == this.description &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.reviewedBy == this.reviewedBy &&
+          other.reviewedAt == this.reviewedAt &&
+          other.isSynced == this.isSynced);
+}
+
+class ExcuseRequestsCompanion extends UpdateCompanion<ExcuseRequest> {
+  final Value<String> id;
+  final Value<String> lessonId;
+  final Value<String> studentId;
+  final Value<String> reasonType;
+  final Value<String?> description;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<String?> reviewedBy;
+  final Value<DateTime?> reviewedAt;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const ExcuseRequestsCompanion({
+    this.id = const Value.absent(),
+    this.lessonId = const Value.absent(),
+    this.studentId = const Value.absent(),
+    this.reasonType = const Value.absent(),
+    this.description = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.reviewedBy = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ExcuseRequestsCompanion.insert({
+    required String id,
+    required String lessonId,
+    required String studentId,
+    required String reasonType,
+    this.description = const Value.absent(),
+    this.status = const Value.absent(),
+    required DateTime createdAt,
+    this.reviewedBy = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       lessonId = Value(lessonId),
+       studentId = Value(studentId),
+       reasonType = Value(reasonType),
+       createdAt = Value(createdAt);
+  static Insertable<ExcuseRequest> custom({
+    Expression<String>? id,
+    Expression<String>? lessonId,
+    Expression<String>? studentId,
+    Expression<String>? reasonType,
+    Expression<String>? description,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<String>? reviewedBy,
+    Expression<DateTime>? reviewedAt,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (lessonId != null) 'lesson_id': lessonId,
+      if (studentId != null) 'student_id': studentId,
+      if (reasonType != null) 'reason_type': reasonType,
+      if (description != null) 'description': description,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (reviewedBy != null) 'reviewed_by': reviewedBy,
+      if (reviewedAt != null) 'reviewed_at': reviewedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ExcuseRequestsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? lessonId,
+    Value<String>? studentId,
+    Value<String>? reasonType,
+    Value<String?>? description,
+    Value<String>? status,
+    Value<DateTime>? createdAt,
+    Value<String?>? reviewedBy,
+    Value<DateTime?>? reviewedAt,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return ExcuseRequestsCompanion(
+      id: id ?? this.id,
+      lessonId: lessonId ?? this.lessonId,
+      studentId: studentId ?? this.studentId,
+      reasonType: reasonType ?? this.reasonType,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      reviewedBy: reviewedBy ?? this.reviewedBy,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (lessonId.present) {
+      map['lesson_id'] = Variable<String>(lessonId.value);
+    }
+    if (studentId.present) {
+      map['student_id'] = Variable<String>(studentId.value);
+    }
+    if (reasonType.present) {
+      map['reason_type'] = Variable<String>(reasonType.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (reviewedBy.present) {
+      map['reviewed_by'] = Variable<String>(reviewedBy.value);
+    }
+    if (reviewedAt.present) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExcuseRequestsCompanion(')
+          ..write('id: $id, ')
+          ..write('lessonId: $lessonId, ')
+          ..write('studentId: $studentId, ')
+          ..write('reasonType: $reasonType, ')
+          ..write('description: $description, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('reviewedBy: $reviewedBy, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3003,6 +3687,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LessonsTable lessons = $LessonsTable(this);
   late final $LessonAttendancesTable lessonAttendances =
       $LessonAttendancesTable(this);
+  late final $ExcuseRequestsTable excuseRequests = $ExcuseRequestsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3016,6 +3701,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     schedules,
     lessons,
     lessonAttendances,
+    excuseRequests,
   ];
 }
 
@@ -4494,6 +5180,27 @@ final class $$StudentsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$ExcuseRequestsTable, List<ExcuseRequest>>
+  _excuseRequestsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.excuseRequests,
+    aliasName: $_aliasNameGenerator(
+      db.students.id,
+      db.excuseRequests.studentId,
+    ),
+  );
+
+  $$ExcuseRequestsTableProcessedTableManager get excuseRequestsRefs {
+    final manager = $$ExcuseRequestsTableTableManager(
+      $_db,
+      $_db.excuseRequests,
+    ).filter((f) => f.studentId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_excuseRequestsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$StudentsTableFilterComposer
@@ -4564,6 +5271,31 @@ class $$StudentsTableFilterComposer
           }) => $$LessonAttendancesTableFilterComposer(
             $db: $db,
             $table: $db.lessonAttendances,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> excuseRequestsRefs(
+    Expression<bool> Function($$ExcuseRequestsTableFilterComposer f) f,
+  ) {
+    final $$ExcuseRequestsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.excuseRequests,
+      getReferencedColumn: (t) => t.studentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExcuseRequestsTableFilterComposer(
+            $db: $db,
+            $table: $db.excuseRequests,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4696,6 +5428,31 @@ class $$StudentsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> excuseRequestsRefs<T extends Object>(
+    Expression<T> Function($$ExcuseRequestsTableAnnotationComposer a) f,
+  ) {
+    final $$ExcuseRequestsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.excuseRequests,
+      getReferencedColumn: (t) => t.studentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExcuseRequestsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.excuseRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$StudentsTableTableManager
@@ -4711,7 +5468,11 @@ class $$StudentsTableTableManager
           $$StudentsTableUpdateCompanionBuilder,
           (Student, $$StudentsTableReferences),
           Student,
-          PrefetchHooks Function({bool groupId, bool lessonAttendancesRefs})
+          PrefetchHooks Function({
+            bool groupId,
+            bool lessonAttendancesRefs,
+            bool excuseRequestsRefs,
+          })
         > {
   $$StudentsTableTableManager(_$AppDatabase db, $StudentsTable table)
     : super(
@@ -4769,11 +5530,13 @@ class $$StudentsTableTableManager
           prefetchHooksCallback: ({
             groupId = false,
             lessonAttendancesRefs = false,
+            excuseRequestsRefs = false,
           }) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (lessonAttendancesRefs) db.lessonAttendances,
+                if (excuseRequestsRefs) db.excuseRequests,
               ],
               addJoins: <
                 T extends TableManagerState<
@@ -4829,6 +5592,28 @@ class $$StudentsTableTableManager
                           ),
                       typedResults: items,
                     ),
+                  if (excuseRequestsRefs)
+                    await $_getPrefetchedData<
+                      Student,
+                      $StudentsTable,
+                      ExcuseRequest
+                    >(
+                      currentTable: table,
+                      referencedTable: $$StudentsTableReferences
+                          ._excuseRequestsRefsTable(db),
+                      managerFromTypedResult:
+                          (p0) =>
+                              $$StudentsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).excuseRequestsRefs,
+                      referencedItemsForCurrentItem:
+                          (item, referencedItems) => referencedItems.where(
+                            (e) => e.studentId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
                 ];
               },
             );
@@ -4849,7 +5634,11 @@ typedef $$StudentsTableProcessedTableManager =
       $$StudentsTableUpdateCompanionBuilder,
       (Student, $$StudentsTableReferences),
       Student,
-      PrefetchHooks Function({bool groupId, bool lessonAttendancesRefs})
+      PrefetchHooks Function({
+        bool groupId,
+        bool lessonAttendancesRefs,
+        bool excuseRequestsRefs,
+      })
     >;
 typedef $$SubjectsTableCreateCompanionBuilder =
     SubjectsCompanion Function({
@@ -6085,6 +6874,24 @@ final class $$LessonsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$ExcuseRequestsTable, List<ExcuseRequest>>
+  _excuseRequestsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.excuseRequests,
+    aliasName: $_aliasNameGenerator(db.lessons.id, db.excuseRequests.lessonId),
+  );
+
+  $$ExcuseRequestsTableProcessedTableManager get excuseRequestsRefs {
+    final manager = $$ExcuseRequestsTableTableManager(
+      $_db,
+      $_db.excuseRequests,
+    ).filter((f) => f.lessonId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_excuseRequestsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$LessonsTableFilterComposer
@@ -6155,6 +6962,31 @@ class $$LessonsTableFilterComposer
           }) => $$LessonAttendancesTableFilterComposer(
             $db: $db,
             $table: $db.lessonAttendances,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> excuseRequestsRefs(
+    Expression<bool> Function($$ExcuseRequestsTableFilterComposer f) f,
+  ) {
+    final $$ExcuseRequestsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.excuseRequests,
+      getReferencedColumn: (t) => t.lessonId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExcuseRequestsTableFilterComposer(
+            $db: $db,
+            $table: $db.excuseRequests,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6291,6 +7123,31 @@ class $$LessonsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> excuseRequestsRefs<T extends Object>(
+    Expression<T> Function($$ExcuseRequestsTableAnnotationComposer a) f,
+  ) {
+    final $$ExcuseRequestsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.excuseRequests,
+      getReferencedColumn: (t) => t.lessonId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExcuseRequestsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.excuseRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$LessonsTableTableManager
@@ -6306,7 +7163,11 @@ class $$LessonsTableTableManager
           $$LessonsTableUpdateCompanionBuilder,
           (Lesson, $$LessonsTableReferences),
           Lesson,
-          PrefetchHooks Function({bool scheduleId, bool lessonAttendancesRefs})
+          PrefetchHooks Function({
+            bool scheduleId,
+            bool lessonAttendancesRefs,
+            bool excuseRequestsRefs,
+          })
         > {
   $$LessonsTableTableManager(_$AppDatabase db, $LessonsTable table)
     : super(
@@ -6364,11 +7225,13 @@ class $$LessonsTableTableManager
           prefetchHooksCallback: ({
             scheduleId = false,
             lessonAttendancesRefs = false,
+            excuseRequestsRefs = false,
           }) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (lessonAttendancesRefs) db.lessonAttendances,
+                if (excuseRequestsRefs) db.excuseRequests,
               ],
               addJoins: <
                 T extends TableManagerState<
@@ -6426,6 +7289,28 @@ class $$LessonsTableTableManager
                           ),
                       typedResults: items,
                     ),
+                  if (excuseRequestsRefs)
+                    await $_getPrefetchedData<
+                      Lesson,
+                      $LessonsTable,
+                      ExcuseRequest
+                    >(
+                      currentTable: table,
+                      referencedTable: $$LessonsTableReferences
+                          ._excuseRequestsRefsTable(db),
+                      managerFromTypedResult:
+                          (p0) =>
+                              $$LessonsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).excuseRequestsRefs,
+                      referencedItemsForCurrentItem:
+                          (item, referencedItems) => referencedItems.where(
+                            (e) => e.lessonId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
                 ];
               },
             );
@@ -6446,7 +7331,11 @@ typedef $$LessonsTableProcessedTableManager =
       $$LessonsTableUpdateCompanionBuilder,
       (Lesson, $$LessonsTableReferences),
       Lesson,
-      PrefetchHooks Function({bool scheduleId, bool lessonAttendancesRefs})
+      PrefetchHooks Function({
+        bool scheduleId,
+        bool lessonAttendancesRefs,
+        bool excuseRequestsRefs,
+      })
     >;
 typedef $$LessonAttendancesTableCreateCompanionBuilder =
     LessonAttendancesCompanion Function({
@@ -6457,6 +7346,7 @@ typedef $$LessonAttendancesTableCreateCompanionBuilder =
       Value<bool> isSynced,
       Value<DateTime?> updatedAt,
       Value<DateTime?> serverUpdatedAt,
+      Value<bool?> isExcused,
       Value<int> rowid,
     });
 typedef $$LessonAttendancesTableUpdateCompanionBuilder =
@@ -6468,6 +7358,7 @@ typedef $$LessonAttendancesTableUpdateCompanionBuilder =
       Value<bool> isSynced,
       Value<DateTime?> updatedAt,
       Value<DateTime?> serverUpdatedAt,
+      Value<bool?> isExcused,
       Value<int> rowid,
     });
 
@@ -6557,6 +7448,11 @@ class $$LessonAttendancesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isExcused => $composableBuilder(
+    column: $table.isExcused,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$LessonsTableFilterComposer get lessonId {
     final $$LessonsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -6638,6 +7534,11 @@ class $$LessonAttendancesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isExcused => $composableBuilder(
+    column: $table.isExcused,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$LessonsTableOrderingComposer get lessonId {
     final $$LessonsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6710,6 +7611,9 @@ class $$LessonAttendancesTableAnnotationComposer
     column: $table.serverUpdatedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isExcused =>
+      $composableBuilder(column: $table.isExcused, builder: (column) => column);
 
   $$LessonsTableAnnotationComposer get lessonId {
     final $$LessonsTableAnnotationComposer composer = $composerBuilder(
@@ -6804,6 +7708,7 @@ class $$LessonAttendancesTableTableManager
                 Value<bool> isSynced = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> serverUpdatedAt = const Value.absent(),
+                Value<bool?> isExcused = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonAttendancesCompanion(
                 id: id,
@@ -6813,6 +7718,7 @@ class $$LessonAttendancesTableTableManager
                 isSynced: isSynced,
                 updatedAt: updatedAt,
                 serverUpdatedAt: serverUpdatedAt,
+                isExcused: isExcused,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6824,6 +7730,7 @@ class $$LessonAttendancesTableTableManager
                 Value<bool> isSynced = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> serverUpdatedAt = const Value.absent(),
+                Value<bool?> isExcused = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LessonAttendancesCompanion.insert(
                 id: id,
@@ -6833,6 +7740,7 @@ class $$LessonAttendancesTableTableManager
                 isSynced: isSynced,
                 updatedAt: updatedAt,
                 serverUpdatedAt: serverUpdatedAt,
+                isExcused: isExcused,
                 rowid: rowid,
               ),
           withReferenceMapper:
@@ -6918,6 +7826,529 @@ typedef $$LessonAttendancesTableProcessedTableManager =
       LessonAttendance,
       PrefetchHooks Function({bool lessonId, bool studentId})
     >;
+typedef $$ExcuseRequestsTableCreateCompanionBuilder =
+    ExcuseRequestsCompanion Function({
+      required String id,
+      required String lessonId,
+      required String studentId,
+      required String reasonType,
+      Value<String?> description,
+      Value<String> status,
+      required DateTime createdAt,
+      Value<String?> reviewedBy,
+      Value<DateTime?> reviewedAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$ExcuseRequestsTableUpdateCompanionBuilder =
+    ExcuseRequestsCompanion Function({
+      Value<String> id,
+      Value<String> lessonId,
+      Value<String> studentId,
+      Value<String> reasonType,
+      Value<String?> description,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<String?> reviewedBy,
+      Value<DateTime?> reviewedAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+final class $$ExcuseRequestsTableReferences
+    extends BaseReferences<_$AppDatabase, $ExcuseRequestsTable, ExcuseRequest> {
+  $$ExcuseRequestsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $LessonsTable _lessonIdTable(_$AppDatabase db) =>
+      db.lessons.createAlias(
+        $_aliasNameGenerator(db.excuseRequests.lessonId, db.lessons.id),
+      );
+
+  $$LessonsTableProcessedTableManager get lessonId {
+    final $_column = $_itemColumn<String>('lesson_id')!;
+
+    final manager = $$LessonsTableTableManager(
+      $_db,
+      $_db.lessons,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_lessonIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $StudentsTable _studentIdTable(_$AppDatabase db) =>
+      db.students.createAlias(
+        $_aliasNameGenerator(db.excuseRequests.studentId, db.students.id),
+      );
+
+  $$StudentsTableProcessedTableManager get studentId {
+    final $_column = $_itemColumn<String>('student_id')!;
+
+    final manager = $$StudentsTableTableManager(
+      $_db,
+      $_db.students,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ExcuseRequestsTableFilterComposer
+    extends Composer<_$AppDatabase, $ExcuseRequestsTable> {
+  $$ExcuseRequestsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reasonType => $composableBuilder(
+    column: $table.reasonType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reviewedBy => $composableBuilder(
+    column: $table.reviewedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$LessonsTableFilterComposer get lessonId {
+    final $$LessonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lessonId,
+      referencedTable: $db.lessons,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LessonsTableFilterComposer(
+            $db: $db,
+            $table: $db.lessons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableFilterComposer get studentId {
+    final $$StudentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.students,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableFilterComposer(
+            $db: $db,
+            $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ExcuseRequestsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExcuseRequestsTable> {
+  $$ExcuseRequestsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reasonType => $composableBuilder(
+    column: $table.reasonType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reviewedBy => $composableBuilder(
+    column: $table.reviewedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$LessonsTableOrderingComposer get lessonId {
+    final $$LessonsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lessonId,
+      referencedTable: $db.lessons,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LessonsTableOrderingComposer(
+            $db: $db,
+            $table: $db.lessons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableOrderingComposer get studentId {
+    final $$StudentsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.students,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableOrderingComposer(
+            $db: $db,
+            $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ExcuseRequestsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExcuseRequestsTable> {
+  $$ExcuseRequestsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get reasonType => $composableBuilder(
+    column: $table.reasonType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get reviewedBy => $composableBuilder(
+    column: $table.reviewedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  $$LessonsTableAnnotationComposer get lessonId {
+    final $$LessonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lessonId,
+      referencedTable: $db.lessons,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LessonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.lessons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableAnnotationComposer get studentId {
+    final $$StudentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.students,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ExcuseRequestsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ExcuseRequestsTable,
+          ExcuseRequest,
+          $$ExcuseRequestsTableFilterComposer,
+          $$ExcuseRequestsTableOrderingComposer,
+          $$ExcuseRequestsTableAnnotationComposer,
+          $$ExcuseRequestsTableCreateCompanionBuilder,
+          $$ExcuseRequestsTableUpdateCompanionBuilder,
+          (ExcuseRequest, $$ExcuseRequestsTableReferences),
+          ExcuseRequest,
+          PrefetchHooks Function({bool lessonId, bool studentId})
+        > {
+  $$ExcuseRequestsTableTableManager(
+    _$AppDatabase db,
+    $ExcuseRequestsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ExcuseRequestsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$ExcuseRequestsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$ExcuseRequestsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> lessonId = const Value.absent(),
+                Value<String> studentId = const Value.absent(),
+                Value<String> reasonType = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> reviewedBy = const Value.absent(),
+                Value<DateTime?> reviewedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExcuseRequestsCompanion(
+                id: id,
+                lessonId: lessonId,
+                studentId: studentId,
+                reasonType: reasonType,
+                description: description,
+                status: status,
+                createdAt: createdAt,
+                reviewedBy: reviewedBy,
+                reviewedAt: reviewedAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String lessonId,
+                required String studentId,
+                required String reasonType,
+                Value<String?> description = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                required DateTime createdAt,
+                Value<String?> reviewedBy = const Value.absent(),
+                Value<DateTime?> reviewedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExcuseRequestsCompanion.insert(
+                id: id,
+                lessonId: lessonId,
+                studentId: studentId,
+                reasonType: reasonType,
+                description: description,
+                status: status,
+                createdAt: createdAt,
+                reviewedBy: reviewedBy,
+                reviewedAt: reviewedAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          $$ExcuseRequestsTableReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: ({lessonId = false, studentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                T extends TableManagerState<
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic
+                >
+              >(state) {
+                if (lessonId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.lessonId,
+                            referencedTable: $$ExcuseRequestsTableReferences
+                                ._lessonIdTable(db),
+                            referencedColumn:
+                                $$ExcuseRequestsTableReferences
+                                    ._lessonIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+                if (studentId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.studentId,
+                            referencedTable: $$ExcuseRequestsTableReferences
+                                ._studentIdTable(db),
+                            referencedColumn:
+                                $$ExcuseRequestsTableReferences
+                                    ._studentIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ExcuseRequestsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ExcuseRequestsTable,
+      ExcuseRequest,
+      $$ExcuseRequestsTableFilterComposer,
+      $$ExcuseRequestsTableOrderingComposer,
+      $$ExcuseRequestsTableAnnotationComposer,
+      $$ExcuseRequestsTableCreateCompanionBuilder,
+      $$ExcuseRequestsTableUpdateCompanionBuilder,
+      (ExcuseRequest, $$ExcuseRequestsTableReferences),
+      ExcuseRequest,
+      PrefetchHooks Function({bool lessonId, bool studentId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6938,4 +8369,6 @@ class $AppDatabaseManager {
       $$LessonsTableTableManager(_db, _db.lessons);
   $$LessonAttendancesTableTableManager get lessonAttendances =>
       $$LessonAttendancesTableTableManager(_db, _db.lessonAttendances);
+  $$ExcuseRequestsTableTableManager get excuseRequests =>
+      $$ExcuseRequestsTableTableManager(_db, _db.excuseRequests);
 }

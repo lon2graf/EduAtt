@@ -60,6 +60,7 @@ class AttendanceRepository implements IAttendanceRepository {
       _dao.watchForStudent(studentId).map(
         (rows) => rows.map((row) {
           final a = row.readTable(_db.lessonAttendances);
+          final l = row.readTable(_db.lessons);
           final s = row.readTable(_db.schedules);
           final sub = row.readTable(_db.subjects);
           final t = row.readTable(_db.teachers);
@@ -74,6 +75,8 @@ class AttendanceRepository implements IAttendanceRepository {
             subjectName: sub.name,
             teacherName: t.name,
             teacherSurname: t.surname,
+            topic: l.topic,
+            isExcused: a.isExcused,
           );
         }).toList(),
       );
@@ -156,6 +159,7 @@ class AttendanceRepository implements IAttendanceRepository {
         studentId: row['student_id'] as String,
         status: Value(row['status'] as String?),
         isSynced: const Value(true),
+        isExcused: Value(row['is_excused'] as bool?),
       ),
     ).toList();
     await _dao.upsertAll(companions);

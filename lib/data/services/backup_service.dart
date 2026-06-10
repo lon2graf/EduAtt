@@ -9,6 +9,7 @@ import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class BackupService {
   final AppDatabase _db;
@@ -17,8 +18,7 @@ class BackupService {
 
   // ── Экспорт ───────────────────────────────────────────────────────────────
 
-  /// Возвращает путь к сохранённому файлу, либо null если пользователь отменил
-  /// диалог (только на десктопе).
+  /// Возвращает путь к сохранённому файлу, либо null если пользователь отменил.
   Future<String?> exportToFile() async {
     final json = await _buildJson();
     final bytes = Uint8List.fromList(utf8.encode(jsonEncode(json)));
@@ -26,21 +26,28 @@ class BackupService {
     final fileName =
         'eduatt_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      // На мобильных платформах SAF/file_picker ненадёжен — пишем напрямую.
-      Directory? dir;
-      if (Platform.isAndroid) dir = await getExternalStorageDirectory();
-      dir ??= await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(bytes);
-      return file.path;
-    }
-
-    // Десктоп: показываем диалог выбора места.
     return FilePicker.platform.saveFile(
       dialogTitle: 'Сохранить резервную копию',
       fileName: fileName,
       bytes: bytes,
+    );
+  }
+
+  /// Открывает системный share sheet с JSON-бэкапом.
+  Future<void> shareFile() async {
+    final json = await _buildJson();
+    final bytes = Uint8List.fromList(utf8.encode(jsonEncode(json)));
+    final now = DateTime.now();
+    final fileName =
+        'eduatt_backup_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
+
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/$fileName');
+    await tempFile.writeAsBytes(bytes);
+
+    await Share.shareXFiles(
+      [XFile(tempFile.path, mimeType: 'application/json')],
+      subject: 'EduAtt резервная копия',
     );
   }
 

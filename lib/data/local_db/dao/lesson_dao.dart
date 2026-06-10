@@ -78,6 +78,42 @@ class LessonDao {
     return rows.isNotEmpty ? _fromRow(rows.first) : null;
   }
 
+  /// Реактивный стрим: все уроки преподавателя на сегодня, отсортированные по
+  /// времени начала. Time-check (current vs upcoming) вычисляется в .map()
+  /// при каждой эмиссии — поэтому не устаревает при изменении данных.
+  Stream<LessonModel?> watchCurrentOrNextForTeacher(String teacherId) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    return (_db.select(_db.lessons).join([
+      innerJoin(_db.schedules, _db.schedules.id.equalsExp(_db.lessons.scheduleId)),
+      innerJoin(_db.subjects, _db.subjects.id.equalsExp(_db.schedules.subjectId)),
+      innerJoin(_db.teachers, _db.teachers.id.equalsExp(_db.schedules.teacherId)),
+      innerJoin(_db.groups, _db.groups.id.equalsExp(_db.schedules.groupId)),
+    ])
+      ..where(
+        _db.schedules.teacherId.equals(teacherId) &
+        _db.schedules.date.isBetweenValues(todayStart, todayEnd),
+      )
+      ..orderBy([OrderingTerm.asc(_db.schedules.startTime)]))
+    .watch()
+    .map((rows) {
+      final nowTime = _formatTime(DateTime.now());
+      LessonModel? upcoming;
+      for (final row in rows) {
+        final s = row.readTable(_db.schedules);
+        if (s.startTime.compareTo(nowTime) <= 0 && s.endTime.compareTo(nowTime) > 0) {
+          return _fromRow(row);
+        }
+        if (upcoming == null && s.startTime.compareTo(nowTime) > 0) {
+          upcoming = _fromRow(row);
+        }
+      }
+      return upcoming;
+    });
+  }
+
   /// Ближайшее занятие сегодня для преподавателя (Личный режим).
   Future<LessonModel?> getNextForTeacher(String teacherId) async {
     final now = DateTime.now();
@@ -102,9 +138,50 @@ class LessonDao {
     return rows.isNotEmpty ? _fromRow(rows.first) : null;
   }
 
+  Stream<List<LessonModel>> watchPastForTeacher(String teacherId) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    return (_db.select(_db.lessons).join([
+      innerJoin(_db.schedules, _db.schedules.id.equalsExp(_db.lessons.scheduleId)),
+      innerJoin(_db.subjects, _db.subjects.id.equalsExp(_db.schedules.subjectId)),
+      innerJoin(_db.teachers, _db.teachers.id.equalsExp(_db.schedules.teacherId)),
+      innerJoin(_db.groups, _db.groups.id.equalsExp(_db.schedules.groupId)),
+    ])
+      ..where(
+        _db.schedules.teacherId.equals(teacherId) &
+        _db.schedules.date.isSmallerThanValue(todayStart),
+      )
+      ..orderBy([
+        OrderingTerm.desc(_db.schedules.date),
+        OrderingTerm.desc(_db.schedules.startTime),
+      ]))
+    .watch()
+    .map((rows) => rows.map(_fromRow).toList());
+  }
+
+  Future<void> upsertLesson({
+    required String id,
+    required String scheduleId,
+    String? topic,
+    required String attendanceStatus,
+  }) =>
+      _db.into(_db.lessons).insertOnConflictUpdate(
+            LessonsCompanion.insert(
+              id: id,
+              scheduleId: scheduleId,
+              topic: Value(topic),
+              attendanceStatus: attendanceStatus,
+            ),
+          );
+
   Future<void> upsertStatus(String lessonId, String status) =>
       (_db.update(_db.lessons)..where((l) => l.id.equals(lessonId)))
           .write(LessonsCompanion(attendanceStatus: Value(status)));
+
+  Future<void> upsertTopic(String lessonId, String? topic) =>
+      (_db.update(_db.lessons)..where((l) => l.id.equals(lessonId)))
+          .write(LessonsCompanion(topic: Value(topic)));
 
   // ── Private helpers ────────────────────────────────────────────────────────
 

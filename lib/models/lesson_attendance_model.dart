@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 class LessonAttendanceModel {
-  final String? id; // Изменено на nullable
+  final String? id;
   final String lessonId;
   final String studentId;
   final String? studentName;
@@ -17,9 +17,13 @@ class LessonAttendanceModel {
   final String? teacherName;
   final String? teacherSurname;
   final String? groupId;
+  final String? topic;
+
+  // null = не рассмотрено/без объяснительной, true = уважительная, false = неуважительная
+  final bool? isExcused;
 
   LessonAttendanceModel({
-    this.id, // Вернули nullable
+    this.id,
     required this.lessonId,
     required this.studentId,
     this.studentName,
@@ -31,6 +35,8 @@ class LessonAttendanceModel {
     this.teacherName,
     this.teacherSurname,
     this.groupId,
+    this.topic,
+    this.isExcused,
   });
 
   factory LessonAttendanceModel.fromNestedJson(Map<String, dynamic> json) {
@@ -44,10 +50,8 @@ class LessonAttendanceModel {
     final studentName =
         '${students["name"] ?? ""} ${students["surname"] ?? ""}'.trim();
 
-    // Парсим lesson_id как String
     final lessonId = json["lesson_id"];
     final String lessonIdString;
-
     if (lessonId is int) {
       lessonIdString = lessonId.toString();
     } else if (lessonId is String) {
@@ -56,10 +60,8 @@ class LessonAttendanceModel {
       lessonIdString = '0';
     }
 
-    // Парсим id как String (может быть null)
     final id = json["id"];
     final String? idString;
-
     if (id == null) {
       idString = null;
     } else if (id is int) {
@@ -67,13 +69,11 @@ class LessonAttendanceModel {
     } else if (id is String) {
       idString = id;
     } else {
-      idString = null; // Возвращаем null если тип не распознан
+      idString = null;
     }
 
-    // Парсим student_id как String
     final studentId = json["student_id"];
     final String studentIdString;
-
     if (studentId is int) {
       studentIdString = studentId.toString();
     } else if (studentId is String) {
@@ -83,7 +83,7 @@ class LessonAttendanceModel {
     }
 
     return LessonAttendanceModel(
-      id: idString, // Может быть null
+      id: idString,
       lessonId: lessonIdString,
       studentId: studentIdString,
       studentName: studentName.isEmpty ? null : studentName,
@@ -96,49 +96,53 @@ class LessonAttendanceModel {
       teacherName: teacher["name"] as String?,
       teacherSurname: teacher["surname"] as String?,
       groupId: schedule["group_id"] as String?,
+      isExcused: json["is_excused"] as bool?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id, // Добавляем id только если он есть
+      if (id != null) 'id': id,
       'lesson_id': lessonId,
       'student_id': studentId,
       'status': status?.toDbValue,
+      if (isExcused != null) 'is_excused': isExcused,
     };
   }
 
-  LessonAttendanceModel copyWith({String? id, AttendanceStatus? status}) {
+  LessonAttendanceModel copyWith({
+    String? id,
+    AttendanceStatus? status,
+    bool? isExcused,
+  }) {
     return LessonAttendanceModel(
-      // Если передали новое значение — берем его, иначе оставляем старое
       id: id ?? this.id,
       status: status ?? this.status,
-      lessonId: this.lessonId,
-      studentId: this.studentId,
-      studentName: this.studentName,
-      lessonDate: this.lessonDate,
-      lessonStart: this.lessonStart,
-      lessonEnd: this.lessonEnd,
-      subjectName: this.subjectName,
-      teacherName: this.teacherName,
-      teacherSurname: this.teacherSurname,
-      groupId: this.groupId,
+      isExcused: isExcused ?? this.isExcused,
+      lessonId: lessonId,
+      studentId: studentId,
+      studentName: studentName,
+      lessonDate: lessonDate,
+      lessonStart: lessonStart,
+      lessonEnd: lessonEnd,
+      subjectName: subjectName,
+      teacherName: teacherName,
+      teacherSurname: teacherSurname,
+      groupId: groupId,
+      topic: topic,
     );
   }
 
-  // 1. Метод для создания модели из объекта Drift (чтение из базы)
   factory LessonAttendanceModel.fromDrift(LessonAttendance data) {
     return LessonAttendanceModel(
       id: data.id,
       lessonId: data.lessonId,
       studentId: data.studentId,
-      status: AttendanceStatus.fromString(
-        data.status,
-      ),  
+      status: AttendanceStatus.fromString(data.status),
+      isExcused: data.isExcused,
     );
   }
 
-  // 2. Метод для сохранения в базу (превращает модель в Companion)
   LessonAttendancesCompanion toCompanion({bool isSynced = true}) {
     return LessonAttendancesCompanion(
       id: Value(id ?? const Uuid().v4()),
@@ -147,6 +151,7 @@ class LessonAttendanceModel {
       status: Value(status?.toDbValue),
       isSynced: Value(isSynced),
       updatedAt: Value(DateTime.now()),
+      isExcused: Value(isExcused),
     );
   }
 }

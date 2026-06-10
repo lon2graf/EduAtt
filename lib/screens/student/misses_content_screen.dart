@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:edu_att/models/attendance_status.dart';
+import 'package:edu_att/models/excuse_request_model.dart';
+import 'package:edu_att/data/repositories/excuse_repository.dart';
+import 'package:edu_att/screens/student/excuse_request_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/providers/student_provider.dart';
@@ -25,32 +28,51 @@ class MissesContentScreen extends ConsumerStatefulWidget {
 class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _showCharts = false;
+  String? _selectedSubject;
+  AttendanceStatus? _selectedStatus;
 
-  // true пока Drift-стрим не эмитнул хотя бы раз (или не истёк таймаут)
   bool _isLoading = true;
   Timer? _skeletonTimeout;
+
+  // lessonId → объяснительная студента (pending/approved/rejected)
+  Map<String, ExcuseRequestModel?> _excusesByLessonId = {};
+  StreamSubscription<List<ExcuseRequestModel>>? _excuseSub;
 
   @override
   void initState() {
     super.initState();
-    // Если данные уже загружены (провайдер жив с предыдущего экрана) —
-    // убираем скелетон уже через следующий кадр.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (ref.read(attendanceProvider).isNotEmpty) {
         setState(() => _isLoading = false);
-        return;
+      } else {
+        _skeletonTimeout = Timer(const Duration(seconds: 3), () {
+          if (mounted && _isLoading) setState(() => _isLoading = false);
+        });
       }
-      // Страховочный таймаут: если Drift молчит 3 секунды — скрываем скелетон
-      _skeletonTimeout = Timer(const Duration(seconds: 3), () {
-        if (mounted && _isLoading) setState(() => _isLoading = false);
-      });
+
+      // Подписываемся на объяснительные студента
+      final studentId = ref.read(currentStudentProvider)?.id;
+      if (studentId != null) {
+        _excuseSub = ref
+            .read(excuseRepositoryProvider)
+            .watchForStudent(studentId)
+            .listen((list) {
+          if (!mounted) return;
+          setState(() {
+            _excusesByLessonId = {
+              for (final e in list) e.lessonId: e,
+            };
+          });
+        });
+      }
     });
   }
 
   @override
   void dispose() {
     _skeletonTimeout?.cancel();
+    _excuseSub?.cancel();
     super.dispose();
   }
 
@@ -99,12 +121,35 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
       });
     }
 
+    final subjects = allAttendances
+        .map((a) => a.subjectName)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
+
+    final displayed = allAttendances.where((a) {
+      if (_selectedSubject != null && a.subjectName != _selectedSubject) {
+        return false;
+      }
+      if (_selectedStatus != null && a.status != _selectedStatus) return false;
+      return true;
+    }).toList();
+
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 8),
             _buildTopBar(context, colorScheme, student, allAttendances),
+            if (!_showCharts) ...[
+              const SizedBox(height: 6),
+              _buildStatusChips(colorScheme),
+              if (subjects.length > 1) ...[
+                const SizedBox(height: 4),
+                _buildSubjectChips(subjects, colorScheme),
+              ],
+            ],
             const SizedBox(height: 8),
             Expanded(
               child: _isLoading
@@ -117,7 +162,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                       ),
                     )
                   : _showCharts
-                      ? AttendanceStatsSection(attendances: allAttendances)
+                      ? AttendanceStatsSection(attendances: displayed)
                       : RefreshIndicator(
                           onRefresh: () async {
                             if (student?.id != null) {
@@ -129,15 +174,84 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                           child: _buildAttendanceList(
                             context,
                             AttendanceAnalyticsHelper.filterByDate(
-                              allAttendances,
+                              displayed,
                               _selectedDate,
                             ),
-                            allAttendances.isEmpty,
+                            displayed.isEmpty,
                           ),
                         ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChips(ColorScheme colorScheme) {
+    return SizedBox(
+      height: 34,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _StatusChip(
+            label: 'Все',
+            selected: _selectedStatus == null,
+            selectedColor: colorScheme.primary,
+            onTap: () => setState(() => _selectedStatus = null),
+          ),
+          const SizedBox(width: 8),
+          _StatusChip(
+            label: 'Пропуск',
+            selected: _selectedStatus == AttendanceStatus.absent,
+            selectedColor: Colors.red.shade600,
+            onTap: () => setState(() => _selectedStatus =
+                _selectedStatus == AttendanceStatus.absent
+                    ? null
+                    : AttendanceStatus.absent),
+          ),
+          const SizedBox(width: 8),
+          _StatusChip(
+            label: 'Опоздание',
+            selected: _selectedStatus == AttendanceStatus.late,
+            selectedColor: Colors.orange.shade700,
+            onTap: () => setState(() => _selectedStatus =
+                _selectedStatus == AttendanceStatus.late
+                    ? null
+                    : AttendanceStatus.late),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubjectChips(List<String> subjects, ColorScheme colorScheme) {
+    return SizedBox(
+      height: 34,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _SubjectChip(
+            label: 'Все',
+            selected: _selectedSubject == null,
+            colorScheme: colorScheme,
+            onTap: () => setState(() => _selectedSubject = null),
+          ),
+          ...subjects.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _SubjectChip(
+                label: s,
+                selected: _selectedSubject == s,
+                colorScheme: colorScheme,
+                onTap: () => setState(
+                  () => _selectedSubject = _selectedSubject == s ? null : s,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -393,6 +507,25 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
           const SizedBox(height: 12),
           const Divider(height: 1),
           const SizedBox(height: 12),
+          if (record.topic != null && record.topic!.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(Icons.bookmark_outline, size: 14, color: colorScheme.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    record.topic!,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -423,8 +556,108 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
               ),
             ],
           ),
+          if (statusEnum == AttendanceStatus.absent ||
+              statusEnum == AttendanceStatus.late) ...[
+            const SizedBox(height: 10),
+            _buildExcuseSection(context, record, colorScheme),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildExcuseSection(
+    BuildContext context,
+    LessonAttendanceModel record,
+    ColorScheme colorScheme,
+  ) {
+    // Уже вынесено решение преподавателем
+    if (record.isExcused == true) {
+      return _excuseBadge(
+        ExcuseStatusType.approved,
+        colorScheme,
+      );
+    }
+    if (record.isExcused == false) {
+      return _excuseBadge(
+        ExcuseStatusType.rejected,
+        colorScheme,
+      );
+    }
+
+    // Смотрим, есть ли объяснительная в Drift
+    final excuse = _excusesByLessonId[record.lessonId];
+    if (excuse != null) {
+      return _excuseBadge(excuse.status, colorScheme);
+    }
+
+    // Нет объяснительной — предлагаем подать
+    return GestureDetector(
+      onTap: () => _showExcuseSheet(record),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: colorScheme.primary.withValues(alpha: 0.4),
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.edit_note_outlined,
+              size: 15,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'Объяснить',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _excuseBadge(ExcuseStatusType status, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: status.color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(status.icon, size: 13, color: status.color),
+          const SizedBox(width: 5),
+          Text(
+            status.label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: status.color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExcuseSheet(LessonAttendanceModel record) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => ExcuseRequestSheet(attendance: record),
     );
   }
 
@@ -457,5 +690,84 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
       'Декабря',
     ];
     return (month >= 1 && month <= 12) ? months[month - 1] : '';
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color selectedColor;
+  final VoidCallback onTap;
+
+  const _StatusChip({
+    required this.label,
+    required this.selected,
+    required this.selectedColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? selectedColor : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubjectChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final ColorScheme colorScheme;
+
+  const _SubjectChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected
+                ? colorScheme.onPrimary
+                : colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
   }
 }

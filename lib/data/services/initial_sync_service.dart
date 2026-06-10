@@ -209,6 +209,41 @@ class InitialSyncService {
     });
   }
 
+  // ─── Delta sync on resume ────────────────────────────────────────────────────
+
+  /// Лёгкая дельта-синхронизация при повторном запуске — без clearAllData.
+  /// Обновляет данные которые могут изменяться между сессиями:
+  /// расписание, уроки, список студентов, посещаемость.
+  Future<void> syncOnResume({required StudentModel student}) async {
+    final institutionId = student.institution_id;
+    if (institutionId == null) return;
+
+    await Future.wait([
+      _syncSchedules(student.groupId, institutionId),
+      _syncLessons(student.groupId),
+      _syncStudents(student.groupId),
+      _syncAttendances(student.id!),
+    ]);
+
+    AppLogger.info('Delta sync (resume) завершён', 'InitialSyncService');
+  }
+
+  /// Дельта-синхронизация для преподавателя при повторном запуске.
+  Future<void> syncOnResumeForTeacher({required TeacherModel teacher}) async {
+    final institutionId = teacher.institutionId;
+    final teacherId = teacher.id!;
+
+    await Future.wait([
+      _syncSchedulesForTeacher(teacherId, institutionId),
+      _syncLessonsForTeacher(teacherId),
+      _syncStudentsForInstitution(institutionId),
+    ]);
+    // Зависит от уроков в Drift — запускаем после основного батча
+    await _syncAttendancesForTeacher(teacherId);
+
+    AppLogger.info('Delta sync teacher (resume) завершён', 'InitialSyncService');
+  }
+
   // ─── Teacher sync ────────────────────────────────────────────────────────────
 
   Future<DataResult<void>> syncAllForTeacher({
@@ -241,6 +276,9 @@ class InitialSyncService {
 
       onProgress?.call('Загрузка уроков...');
       await _syncLessonsForTeacher(teacherId);
+
+      onProgress?.call('Загрузка посещаемости...');
+      await _syncAttendancesForTeacher(teacherId);
 
       AppLogger.info(
         'Начальная синхронизация преподавателя завершена',
@@ -361,6 +399,58 @@ class InitialSyncService {
         mode: InsertMode.insertOrReplace,
       );
     });
+  }
+
+  /// Скачивает отметки посещаемости для всех уроков этого преподавателя.
+  /// Читает lesson_id из локального Drift (уроки уже синхронизированы),
+  /// затем грузит записи батчами по 50 (ограничение URL у PostgREST).
+  Future<void> _syncAttendancesForTeacher(String teacherId) async {
+    final scheduleRows = await (
+      _db.select(_db.schedules)..where((s) => s.teacherId.equals(teacherId))
+    ).get();
+    if (scheduleRows.isEmpty) return;
+
+    final scheduleIdSet = scheduleRows.map((s) => s.id).toSet();
+
+    final lessonRows = await _db.select(_db.lessons).get();
+    final lessonIds = lessonRows
+        .where((l) => scheduleIdSet.contains(l.scheduleId))
+        .map((l) => l.id)
+        .toList();
+    if (lessonIds.isEmpty) return;
+
+    const batchSize = 50;
+    final all = <Map<String, dynamic>>[];
+    for (var i = 0; i < lessonIds.length; i += batchSize) {
+      final chunk = lessonIds.skip(i).take(batchSize).toList();
+      final rows = await BaseService.client
+          .from('lesson_attendances')
+          .select('id, lesson_id, student_id, status')
+          .inFilter('lesson_id', chunk);
+      all.addAll((rows as List).cast<Map<String, dynamic>>());
+    }
+    if (all.isEmpty) return;
+
+    await _db.batch((b) {
+      b.insertAll(
+        _db.lessonAttendances,
+        all.map(
+          (row) => LessonAttendancesCompanion.insert(
+            id: row['id'] as String,
+            lessonId: row['lesson_id'] as String,
+            studentId: row['student_id'] as String,
+            status: Value(row['status'] as String?),
+            isSynced: const Value(true),
+          ),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+
+    AppLogger.info(
+      'Синхронизировано ${all.length} отметок посещаемости для преподавателя',
+      'InitialSyncService',
+    );
   }
 
   Future<void> _syncAttendances(String studentId) async {

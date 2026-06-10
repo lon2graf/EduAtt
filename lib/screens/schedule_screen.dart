@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
@@ -31,10 +33,22 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   // 0 = текущая неделя, -1 = прошлая, +1 = следующая
   int _weekOffset = 0;
 
+  Timer? _clockTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _initStream());
+    // Перерисовываем каждую минуту, чтобы баннер появлялся/исчезал по расписанию
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _initStream() async {
@@ -100,6 +114,21 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             onNextWeek: () => setState(() => _weekOffset++),
           ),
           const Divider(height: 1),
+          Builder(builder: (_) {
+            final now = DateTime.now();
+            final isToday = state.selectedDay.year == now.year &&
+                state.selectedDay.month == now.month &&
+                state.selectedDay.day == now.day;
+            if (!isToday) return const SizedBox.shrink();
+            final ongoing = state.ongoingLesson;
+            final next = state.nextTodayLesson;
+            final banner = ongoing ?? next;
+            if (banner == null) return const SizedBox.shrink();
+            return _NextLessonBanner(
+              lesson: banner,
+              isOngoing: ongoing != null,
+            );
+          }),
           Expanded(
             child: isPersonal
                 ? _ScheduleBody(state: state)
@@ -299,6 +328,144 @@ class _ScheduleBody extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       itemCount: items.length,
       itemBuilder: (context, index) => _ScheduleCard(item: items[index]),
+    );
+  }
+}
+
+// ─────────────────────── Next Lesson Banner ───────────────────────
+
+class _NextLessonBanner extends StatefulWidget {
+  final ScheduleModel lesson;
+  final bool isOngoing;
+
+  const _NextLessonBanner({required this.lesson, required this.isOngoing});
+
+  @override
+  State<_NextLessonBanner> createState() => _NextLessonBannerState();
+}
+
+class _NextLessonBannerState extends State<_NextLessonBanner> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _countdown(String timeStr, {required bool isEnd}) {
+    final now = DateTime.now();
+    final parts = timeStr.split(':');
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+    final target = DateTime(now.year, now.month, now.day, h, m);
+    final diff = target.difference(now);
+    if (!diff.isNegative && diff.inMinutes == 0) {
+      return isEnd ? 'заканчивается вот-вот' : 'начинается вот-вот';
+    }
+    final totalMin = diff.inMinutes.abs();
+    if (totalMin < 60) {
+      return isEnd ? 'ещё $totalMin мин' : 'через $totalMin мин';
+    }
+    final hrs = totalMin ~/ 60;
+    final mins = totalMin % 60;
+    final mStr = mins > 0 ? ' $mins мин' : '';
+    return isEnd ? 'ещё ${hrs}ч$mStr' : 'через ${hrs}ч$mStr';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lesson = widget.lesson;
+    final isOngoing = widget.isOngoing;
+
+    final bgColor =
+        isOngoing ? colorScheme.primaryContainer : colorScheme.secondaryContainer;
+    final fgColor = isOngoing
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSecondaryContainer;
+
+    final label = isOngoing ? 'Сейчас идёт' : 'Следующее занятие';
+    final countdown = isOngoing
+        ? _countdown(lesson.endTime, isEnd: true)
+        : _countdown(lesson.startTime, isEnd: false);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isOngoing ? Icons.play_circle_outline : Icons.access_time_rounded,
+            color: fgColor,
+            size: 26,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: fgColor.withValues(alpha: 0.7),
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  lesson.subjectName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: fgColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${lesson.startTimeShort} – ${lesson.endTimeShort}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: fgColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                countdown,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: fgColor.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

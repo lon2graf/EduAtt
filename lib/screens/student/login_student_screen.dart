@@ -88,15 +88,18 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
       return;
     }
 
+    // Прогреваем потоки до навигации (ошибка не блокирует переход)
     final student = ref.read(currentStudentProvider);
-    if (student != null) {
-      await ref.read(attendanceProvider.notifier).initStudentStream(student.id!);
-      await ref.read(currentLessonProvider.notifier).loadCurrentLesson(student.groupId);
-
-      if (!mounted) return;
-      EduSnackBar.showGreeting(context, ref, student.name);
-      context.go('/student/home');
+    if (student?.id != null) {
+      try {
+        await ref.read(attendanceProvider.notifier).initStudentStream(student!.id!);
+        await ref.read(currentLessonProvider.notifier).loadCurrentLesson(student.groupId);
+      } catch (_) {}
     }
+
+    if (!mounted) return;
+    if (student != null) EduSnackBar.showGreeting(context, ref, student.name);
+    context.go('/student/home');
   }
 
   @override
@@ -181,8 +184,8 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
                           () => selectedInstitutionId =
                               '761584a9-07a1-4e5f-9549-7911ab5bc1b5',
                         );
-                        emailController.text = 'ivanova_v@mpcit.ru';
-                        passwordController.text = 'myhash_s3';
+                        emailController.text = 'ivanov.p11@mct.ru';
+                        passwordController.text = '123';
                       },
                       child: Container(
                         height: 50,
@@ -252,7 +255,9 @@ class _StudentLoginScreenState extends ConsumerState<StudentLoginScreen> {
           'Выберите организацию',
           style: TextStyle(color: theme.hintColor),
         ),
-        value: selectedInstitutionId,
+        value: institutions.any((i) => i.id == selectedInstitutionId)
+            ? selectedInstitutionId
+            : null,
         items: institutions
             .map(
               (inst) => DropdownMenuItem(

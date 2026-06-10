@@ -24,8 +24,35 @@ class ScheduleState {
       .toList()
     ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
+  /// Lesson currently in progress (today).
+  ScheduleModel? get ongoingLesson {
+    final now = DateTime.now();
+    final t = _timeStr(now);
+    final matches = schedules.where((s) =>
+        _isSameDay(s.date, now) &&
+        s.startTime.compareTo(t) <= 0 &&
+        s.endTime.compareTo(t) > 0);
+    return matches.isEmpty ? null : matches.first;
+  }
+
+  /// Next lesson today that hasn't started yet.
+  ScheduleModel? get nextTodayLesson {
+    final now = DateTime.now();
+    final t = _timeStr(now);
+    final upcoming = schedules
+        .where((s) => _isSameDay(s.date, now) && s.startTime.compareTo(t) > 0)
+        .toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    return upcoming.isEmpty ? null : upcoming.first;
+  }
+
   static bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static String _timeStr(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:'
+      '${dt.minute.toString().padLeft(2, '0')}:'
+      '${dt.second.toString().padLeft(2, '0')}';
 
   ScheduleState copyWith({
     List<ScheduleModel>? schedules,

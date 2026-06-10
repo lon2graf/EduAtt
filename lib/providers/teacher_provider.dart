@@ -44,7 +44,6 @@ class TeacherNotifier extends StateNotifier<TeacherModel?> {
       );
       if (driftTeacher != null) {
         state = driftTeacher;
-        _ref.read(offlineModeProvider.notifier).state = true;
         _backgroundAuthCheck(email: email, password: password, institutionId: institutionId);
         return true;
       }
@@ -182,13 +181,19 @@ class TeacherNotifier extends StateNotifier<TeacherModel?> {
     required String institutionId,
   }) {
     TeacherService.loginTeacher(email: email, password: password, institutionId: institutionId)
-        .timeout(const Duration(seconds: 30))
+        .timeout(const Duration(seconds: 15))
         .then((fresh) {
           if (fresh != null && mounted) {
             state = fresh;
             _ref.read(offlineModeProvider.notifier).state = false;
+            // Фоновая дельта-синхронизация данных без блокировки UI
+            _syncService.syncOnResumeForTeacher(teacher: fresh).catchError((_) {});
           }
         })
-        .catchError((_) {});
+        .catchError((_) {
+          if (mounted) {
+            _ref.read(offlineModeProvider.notifier).state = true;
+          }
+        });
   }
 }

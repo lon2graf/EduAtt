@@ -102,7 +102,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        indicatorColor: Colors.white.withOpacity(0.4),
+        indicatorColor: Colors.white.withValues(alpha: 0.4),
         destinations: destinations,
         surfaceTintColor: Colors.transparent,
       ),

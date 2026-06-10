@@ -22,11 +22,11 @@ abstract class IAttendanceRepository {
   /// Записывает данные из Supabase (real-time или delta) в локальную БД.
   Future<void> upsertFromRemote(List<Map<String, dynamic>> raw);
 
-  /// Отмечает студента присутствующим самостоятельно.
-  Future<void> markSelfPresent({required String lessonId, required String studentId});
-
   /// Realtime-поток посещаемости студента из Supabase (для синхронизации в Drift).
   Stream<List<Map<String, dynamic>>> watchRemoteStudent(String studentId);
+
+  /// Отмечает студента присутствующим самостоятельно.
+  Future<void> markSelfPresent({required String lessonId, required String studentId});
 
   /// Возвращает данные посещаемости группы за неделю.
   Future<List<LessonAttendanceModel>> getWeeklyGroupAttendance({

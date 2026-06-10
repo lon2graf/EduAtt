@@ -45,10 +45,10 @@ class LessonModel {
     return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : startTime;
   }
 
-  LessonModel copyWith({LessonAttendanceStatus? status}) {
+  LessonModel copyWith({LessonAttendanceStatus? status, String? topic}) {
     return LessonModel(
       id: this.id,
-      topic: this.topic,
+      topic: topic ?? this.topic,
       date: this.date,
       startTime: this.startTime,
       endTime: this.endTime,

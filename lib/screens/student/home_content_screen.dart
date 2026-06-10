@@ -86,9 +86,6 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
-      if (ref.read(offlineModeProvider)) {
-        EduSnackBar.showInfo(context, ref, 'Работаем оффлайн');
-      }
     });
     // Обновляем UI каждую минуту для прогресс-бара
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -140,20 +137,30 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
       }
     });
 
-    // Offline/online transitions
-    ref.listen<bool>(isOfflineProvider, (wasOffline, isOffline) {
+    // Переход в офлайн/онлайн через реальный auth-check
+    ref.listen<bool>(offlineModeProvider, (wasOffline, isOffline) {
       if (isOffline && wasOffline == false) {
         EduSnackBar.showWaiting(
           context,
           ref,
-          'Интернет пропал, но я всё помню! Работаем в оффлайн-режиме',
+          'Нет соединения с сервером. Работаем оффлайн',
         );
       } else if (!isOffline && wasOffline == true) {
+        EduSnackBar.showSuccess(context, ref, 'Соединение восстановлено');
         final student = ref.read(currentStudentProvider);
         if (student != null) {
-          ref
-              .read(attendanceProvider.notifier)
-              .syncAttendanceDelta(student.id!);
+          ref.read(attendanceProvider.notifier).syncAttendanceDelta(student.id!);
+          ref.read(scheduleProvider.notifier).syncSchedule();
+        }
+      }
+    });
+
+    // Переход в офлайн по сети (дебаунс 2 сек — без ложных срабатываний при старте)
+    ref.listen<bool>(isOfflineProvider, (wasOffline, isOffline) {
+      if (!isOffline && wasOffline == true) {
+        // Сеть появилась — синхронизируем если offlineModeProvider ещё не поймал
+        final student = ref.read(currentStudentProvider);
+        if (student != null && !ref.read(offlineModeProvider)) {
           ref.read(scheduleProvider.notifier).syncSchedule();
         }
       }
@@ -444,84 +451,84 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
     // В личном режиме любой студент управляет своей ведомостью как «старosta»
     final actAsHeadman = student.isHeadman || isPersonal;
 
-    return Row(
-      children: [
-        // ЧАТ — скрыт в личном режиме
-        if (!isPersonal) ...[
-          Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: () => context.go('/lesson_chat'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.15),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Icon(Icons.chat_bubble_outline, size: 20),
-            ),
-          ),
-          const SizedBox(width: 12),
-        ],
-        // ДЕЙСТВИЕ
-        Expanded(
-          flex: isPersonal ? 7 : 5,
-          child: actAsHeadman
-              ? _buildHeadmanButton(context, lesson, isOffline)
-              : _buildStudentPresenceButton(
-                  context,
-                  lesson,
-                  student,
-                  isMarked,
-                ),
-        ),
-      ],
-    );
-  }
+    // Личный режим: только кнопка ведомости
+    if (isPersonal) {
+      return _buildHeadmanButton(context, lesson, isOffline);
+    }
 
-  Widget _buildStudentPresenceButton(
-    BuildContext context,
-    LessonModel lesson,
-    StudentModel student,
-    bool isMarked,
-  ) {
-    return ElevatedButton(
-      onPressed:
-          isMarked
-              ? null
-              : () async {
-                try {
-                  await ref.read(attendanceRepositoryProvider).markSelfPresent(
-                    lessonId: lesson.id!,
-                    studentId: student.id!,
-                  );
-                  await _loadInitialData();
-                  if (context.mounted) {
-                    EduSnackBar.showSuccess(context, ref, "Вы в списке! 🐾");
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    EduSnackBar.showError(context, ref, "Ошибка отметки");
-                  }
-                }
-              },
+    final Widget chatButton = ElevatedButton(
+      onPressed: () => context.go('/lesson_chat'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: isMarked ? Colors.green.shade400 : Colors.white,
-        foregroundColor: isMarked ? Colors.white : Colors.green.shade800,
+        backgroundColor: Colors.white.withValues(alpha: 0.15),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      child: const Icon(Icons.chat_bubble_outline, size: 20),
+    );
+
+    final Widget qrButton = ElevatedButton.icon(
+      onPressed: () => context.go('/student/qr_scan'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white.withValues(alpha: 0.15),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      icon: const Icon(Icons.qr_code_scanner, size: 18),
+      label: const Text('Сканировать QR'),
+    );
+
+    final Widget markedButton = ElevatedButton(
+      onPressed: null,
+      style: ElevatedButton.styleFrom(
         disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
         disabledForegroundColor: Colors.white60,
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      child: Text(
-        isMarked ? "ВЫ ОТМЕЧЕНЫ ✅" : "Я НА ПАРЕ",
-        style: const TextStyle(fontWeight: FontWeight.bold),
+      child: const Text(
+        'ВЫ ОТМЕЧЕНЫ ✅',
+        style: TextStyle(fontWeight: FontWeight.bold),
       ),
     );
+
+    if (actAsHeadman) {
+      // Староста: [чат] [посещаемость] + QR снизу если не отмечен
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(flex: 2, child: chatButton),
+              const SizedBox(width: 12),
+              Expanded(flex: 5, child: _buildHeadmanButton(context, lesson, isOffline)),
+            ],
+          ),
+          if (!isMarked) ...[
+            const SizedBox(height: 10),
+            qrButton,
+          ],
+        ],
+      );
+    }
+
+    // Обычный студент
+    if (isMarked) {
+      return Row(
+        children: [
+          Expanded(flex: 2, child: chatButton),
+          const SizedBox(width: 12),
+          Expanded(flex: 5, child: markedButton),
+        ],
+      );
+    }
+
+    // Не отмечен — только QR
+    return qrButton;
   }
 
   Widget _buildHeadmanButton(BuildContext context, LessonModel lesson, bool isOffline) {

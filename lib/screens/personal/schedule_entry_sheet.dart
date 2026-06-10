@@ -36,6 +36,9 @@ class _ScheduleEntrySheetState extends ConsumerState<_ScheduleEntrySheet> {
   Subject? _selectedSubject;
   Group? _selectedGroup;
 
+  bool _repeat = false;
+  int _repeatWeeks = 4;
+
   List<Subject> _subjects = [];
   List<Group> _groups = [];
   bool _isLoading = false;
@@ -122,16 +125,19 @@ class _ScheduleEntrySheetState extends ConsumerState<_ScheduleEntrySheet> {
     setState(() => _isLoading = true);
     try {
       final service = ref.read(personalModeServiceProvider);
-      await service.insertScheduleWithLesson(
-        scheduleId: _uuid.v4(),
-        lessonId: _uuid.v4(),
-        subjectId: subject.id,
-        groupId: group.id,
-        date: DateTime(_date.year, _date.month, _date.day),
-        startTime: _fmt(_startTime),
-        endTime: _fmt(_endTime),
-      );
-      // Перезапускаем стрим расписания для обновления UI
+      final baseDate = DateTime(_date.year, _date.month, _date.day);
+      final count = _repeat ? _repeatWeeks : 1;
+      for (int i = 0; i < count; i++) {
+        await service.insertScheduleWithLesson(
+          scheduleId: _uuid.v4(),
+          lessonId: _uuid.v4(),
+          subjectId: subject.id,
+          groupId: group.id,
+          date: baseDate.add(Duration(days: 7 * i)),
+          startTime: _fmt(_startTime),
+          endTime: _fmt(_endTime),
+        );
+      }
       final scheduleNotifier = ref.read(scheduleProvider.notifier);
       await scheduleNotifier.syncSchedule();
       if (mounted) Navigator.of(context).pop();
@@ -238,6 +244,18 @@ class _ScheduleEntrySheetState extends ConsumerState<_ScheduleEntrySheet> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+
+          const SizedBox(height: 12),
+
+          // Повторение
+          _RepeatRow(
+            repeat: _repeat,
+            weeks: _repeatWeeks,
+            colorScheme: colorScheme,
+            onToggle: (v) => setState(() => _repeat = v),
+            onWeeksChanged: (v) => setState(() => _repeatWeeks = v),
           ),
           const SizedBox(height: 12),
 
@@ -382,6 +400,74 @@ class _DropdownRow<T> extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RepeatRow extends StatelessWidget {
+  final bool repeat;
+  final int weeks;
+  final ValueChanged<bool> onToggle;
+  final ValueChanged<int> onWeeksChanged;
+  final ColorScheme colorScheme;
+
+  const _RepeatRow({
+    required this.repeat,
+    required this.weeks,
+    required this.onToggle,
+    required this.onWeeksChanged,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.repeat, size: 18, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Повторять еженедельно',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (repeat) ...[
+            IconButton(
+              icon: const Icon(Icons.remove, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: weeks > 2 ? () => onWeeksChanged(weeks - 1) : null,
+            ),
+            SizedBox(
+              width: 36,
+              child: Text(
+                '$weeks нед.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: weeks < 52 ? () => onWeeksChanged(weeks + 1) : null,
+            ),
+          ],
+          Switch(
+            value: repeat,
+            onChanged: onToggle,
           ),
         ],
       ),

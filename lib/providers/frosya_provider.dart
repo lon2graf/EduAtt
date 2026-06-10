@@ -1,34 +1,48 @@
 import 'package:edu_att/data/remote/shared_preferences_service.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-/// Провайдер, который следит за тем, нужно ли показывать маскота
+/// Провайдер видимости маскота
 final mascotProvider = StateNotifierProvider<MascotNotifier, bool>((ref) {
   return MascotNotifier();
 });
 
 class MascotNotifier extends StateNotifier<bool> {
-  // При создании сразу ставим true, но тут же запускаем загрузку из памяти
   MascotNotifier() : super(true) {
-    _loadMascotSettings();
+    _load();
   }
 
-  /// Загружаем настройки из локального хранилища
-  Future<void> _loadMascotSettings() async {
-    final isEnabled = await SharedPreferencesService.getMascotEnabled();
-    state = isEnabled;
+  Future<void> _load() async {
+    state = await SharedPreferencesService.getMascotEnabled();
   }
 
-  /// Метод для включения/выключения маскота
   Future<void> toggleMascot() async {
-    // Инвертируем текущее состояние
     state = !state;
-    // Сохраняем новое значение в память телефона
     await SharedPreferencesService.setMascotEnabled(state);
   }
 
-  /// Метод для явной установки состояния (если понадобится)
   Future<void> setMascotVisibility(bool isVisible) async {
     state = isVisible;
     await SharedPreferencesService.setMascotEnabled(isVisible);
+  }
+}
+
+/// Провайдер анимации маскота
+final mascotAnimationProvider =
+    StateNotifierProvider<MascotAnimationNotifier, bool>((ref) {
+  return MascotAnimationNotifier();
+});
+
+class MascotAnimationNotifier extends StateNotifier<bool> {
+  MascotAnimationNotifier() : super(true) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    state = await SharedPreferencesService.getMascotAnimation();
+  }
+
+  Future<void> toggle() async {
+    state = !state;
+    await SharedPreferencesService.setMascotAnimation(state);
   }
 }

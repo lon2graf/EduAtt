@@ -14,10 +14,17 @@ import 'package:edu_att/screens/schedule_screen.dart';
 import 'package:edu_att/screens/teacher/teacher_group_analytics_screen.dart';
 import 'package:edu_att/screens/personal/personal_role_select_screen.dart';
 import 'package:edu_att/screens/personal/personal_manage_screen.dart';
+import 'package:edu_att/screens/onboarding_screen.dart';
+import 'package:edu_att/screens/student/qr_scanner_screen.dart';
+import 'package:edu_att/screens/student/subject_stats_screen.dart';
+import 'package:edu_att/screens/teacher/lesson_history_screen.dart';
+import 'package:edu_att/screens/teacher/lesson_history_detail_screen.dart';
+import 'package:edu_att/models/lesson_model.dart';
 
-// Глобальная переменная роутера
-final GoRouter appRouter = GoRouter(
-  initialLocation: '/', // Начальный маршрут
+/// Создаёт роутер с нужным начальным маршрутом.
+/// [initialLocation] — `/onboarding` при первом запуске, `/` иначе.
+GoRouter createAppRouter(String initialLocation) => GoRouter(
+  initialLocation: initialLocation,
   routes: [
     GoRoute(path: '/', builder: (context, state) => const MainMenuScreen()),
     GoRoute(
@@ -77,6 +84,29 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/personal/manage',
       builder: (context, state) => const PersonalManageScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingScreen(),
+    ),
+    GoRoute(
+      path: '/student/qr_scan',
+      builder: (context, state) => const QrScannerScreen(),
+    ),
+    GoRoute(
+      path: '/student/subject_stats',
+      builder: (context, state) => const SubjectStatsScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/history',
+      builder: (context, state) => const LessonHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/history/detail',
+      builder: (context, state) {
+        final lesson = state.extra as LessonModel;
+        return LessonHistoryDetailScreen(lesson: lesson);
+      },
     ),
   ],
 );

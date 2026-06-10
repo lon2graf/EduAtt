@@ -57,6 +57,15 @@ class TeacherProfileContentScreen extends ConsumerWidget {
                       child: Column(
                         children: [
                           _buildMascotSettingsTile(context, ref),
+                          if (ref.watch(mascotProvider)) ...[
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                            _buildMascotAnimationTile(context, ref),
+                          ],
                           Divider(
                             height: 1,
                             indent: 16,
@@ -157,6 +166,21 @@ class TeacherProfileContentScreen extends ConsumerWidget {
             ref,
             value ? 'Фрося проснулась!' : 'Режим минимализма включен',
           );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMascotAnimationTile(BuildContext context, WidgetRef ref) {
+    final isAnimated = ref.watch(mascotAnimationProvider);
+    return ListTile(
+      leading: const Icon(Icons.animation_outlined),
+      title: const Text('Анимация Фроси'),
+      subtitle: Text(isAnimated ? 'Летает' : 'Стоит спокойно'),
+      trailing: Switch(
+        value: isAnimated,
+        onChanged: (_) {
+          ref.read(mascotAnimationProvider.notifier).toggle();
         },
       ),
     );

@@ -73,16 +73,16 @@ class _TeacherHomeContentScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
-      if (ref.read(offlineModeProvider)) {
-        EduSnackBar.showInfo(
-          context,
-          ref,
-          'Вход выполнен в оффлайн-режиме. Данные актуальны на момент последнего входа',
-        );
-      }
     });
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      final teacher = ref.read(teacherProvider);
+      if (teacher?.id != null) {
+        ref
+            .read(currentLessonProvider.notifier)
+            .loadCurrentOrNextLessonForTeacher(teacher!.id!);
+      }
     });
   }
 
@@ -94,23 +94,15 @@ class _TeacherHomeContentScreenState
 
   Future<void> _loadInitialData() async {
     final teacher = ref.read(teacherProvider);
-    if (teacher != null) {
-      final isPersonal = ref.read(personalModeProvider).isActive;
-      if (isPersonal) {
-        await ref
-            .read(currentLessonProvider.notifier)
-            .loadCurrentOrNextLessonForTeacher(teacher.id!);
-      } else {
-        await ref
-            .read(currentLessonProvider.notifier)
-            .loadCurrentLessonForTeacher(teacher.id!);
-      }
-      final lesson = ref.read(currentLessonProvider);
-      if (lesson != null && lesson.groupId.isNotEmpty) {
-        ref
-            .read(groupAnalyticsProvider.notifier)
-            .loadForGroup(lesson.groupId, lesson.groupName);
-      }
+    if (teacher == null || teacher.id == null) return;
+    await ref
+        .read(currentLessonProvider.notifier)
+        .loadCurrentOrNextLessonForTeacher(teacher.id!);
+    final lesson = ref.read(currentLessonProvider);
+    if (lesson != null && lesson.groupId.isNotEmpty) {
+      ref
+          .read(groupAnalyticsProvider.notifier)
+          .loadForGroup(lesson.groupId, lesson.groupName);
     }
   }
 
@@ -129,15 +121,16 @@ class _TeacherHomeContentScreenState
       }
     });
 
-    // Offline/online transitions
-    ref.listen<bool>(isOfflineProvider, (wasOffline, isOffline) {
+    // Переход в офлайн/онлайн через реальный auth-check
+    ref.listen<bool>(offlineModeProvider, (wasOffline, isOffline) {
       if (isOffline && wasOffline == false) {
         EduSnackBar.showWaiting(
           context,
           ref,
-          'Интернет пропал, но я всё помню! Работаем в оффлайн-режиме',
+          'Нет соединения с сервером. Работаем оффлайн',
         );
       } else if (!isOffline && wasOffline == true) {
+        EduSnackBar.showSuccess(context, ref, 'Соединение восстановлено');
         ref.read(scheduleProvider.notifier).syncSchedule();
         ref.read(lessonAttendanceMarkProvider.notifier).syncPending();
       }
@@ -219,10 +212,20 @@ class _TeacherHomeContentScreenState
             ),
           ],
         ),
-        IconButton(
-          icon: const Icon(Icons.calendar_month_outlined),
-          tooltip: 'Расписание',
-          onPressed: () => context.push('/schedule'),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.history_outlined),
+              tooltip: 'История занятий',
+              onPressed: () => context.push('/teacher/history'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.calendar_month_outlined),
+              tooltip: 'Расписание',
+              onPressed: () => context.push('/schedule'),
+            ),
+          ],
         ),
       ],
     );

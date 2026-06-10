@@ -41,7 +41,6 @@ class StudentNotifier extends StateNotifier<StudentModel?> {
       final driftStudent = await _loadStudentFromDrift(studentId);
       if (driftStudent != null) {
         state = driftStudent;
-        _ref.read(offlineModeProvider.notifier).state = true;
         _backgroundAuthCheck(institutionId, email, password);
         return true;
       }
@@ -178,13 +177,19 @@ class StudentNotifier extends StateNotifier<StudentModel?> {
     String password,
   ) {
     StudentServices.loginStudent(institutionId, email, password)
-        .timeout(const Duration(seconds: 30))
+        .timeout(const Duration(seconds: 15))
         .then((freshStudent) {
           if (freshStudent != null && mounted) {
             state = freshStudent;
             _ref.read(offlineModeProvider.notifier).state = false;
+            // Фоновая дельта-синхронизация данных без блокировки UI
+            _syncService.syncOnResume(student: freshStudent).catchError((_) {});
           }
         })
-        .catchError((_) {});
+        .catchError((_) {
+          if (mounted) {
+            _ref.read(offlineModeProvider.notifier).state = true;
+          }
+        });
   }
 }

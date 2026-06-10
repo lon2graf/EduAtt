@@ -9,11 +9,13 @@ import 'package:edu_att/models/student_model.dart';
 import 'package:edu_att/providers/group_provider.dart';
 import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/current_lesson_provider.dart';
+import 'package:edu_att/data/repositories/lesson_repository.dart';
 import 'package:edu_att/models/lesson_attendance_status.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
 import 'package:edu_att/mascot/mascot_manager.dart';
 import 'package:edu_att/utils/app_logger.dart';
 import 'package:edu_att/utils/edu_snack_bar.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class TeacherAttendanceMarkScreen extends ConsumerStatefulWidget {
   const TeacherAttendanceMarkScreen({super.key});
@@ -31,12 +33,18 @@ class _TeacherAttendanceMarkScreenState
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  final TextEditingController _topicController = TextEditingController();
+  Timer? _topicDebounce;
+  bool _topicInitialized = false;
+
   Timer? _autoAdvanceTimer;
 
   @override
   void dispose() {
     _autoAdvanceTimer?.cancel();
+    _topicDebounce?.cancel();
     _searchController.dispose();
+    _topicController.dispose();
     super.dispose();
   }
 
@@ -95,6 +103,13 @@ class _TeacherAttendanceMarkScreenState
       return _loadingScreen(context);
     }
 
+    if (lesson != null && !_topicInitialized) {
+      _topicInitialized = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _topicController.text = lesson.topic ?? '';
+      });
+    }
+
     final attendanceMap = {for (final a in attendanceList) a.studentId: a};
 
     final student = students[currentIndex];
@@ -127,6 +142,12 @@ class _TeacherAttendanceMarkScreenState
           onPressed: () => context.go('/teacher/home'),
         ),
         actions: [
+          if (lesson?.id != null)
+            IconButton(
+              icon: const Icon(Icons.qr_code),
+              tooltip: 'QR для самоотметки',
+              onPressed: () => _showQrSheet(context, lesson!.id!),
+            ),
           IconButton(
             icon: const Icon(Icons.done_all),
             tooltip: 'Все присутствуют',
@@ -307,7 +328,9 @@ class _TeacherAttendanceMarkScreenState
           children: [
             const Spacer(),
             _buildStudentCard(context, student),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+            _buildTopicField(context, lesson?.id),
+            const SizedBox(height: 16),
             _buildStatusSelector(student.id!, studentAttendance.status, students.length),
             const Spacer(),
             Padding(
@@ -464,7 +487,11 @@ class _TeacherAttendanceMarkScreenState
         padding: const EdgeInsets.all(2),
         child: ElevatedButton.icon(
           onPressed: () {
-            HapticFeedback.lightImpact();
+            if (status == AttendanceStatus.absent) {
+              HapticFeedback.mediumImpact();
+            } else {
+              HapticFeedback.lightImpact();
+            }
             ref
                 .read(lessonAttendanceMarkProvider.notifier)
                 .setAttendanceStatus(studentId, status);
@@ -486,6 +513,44 @@ class _TeacherAttendanceMarkScreenState
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTopicField(BuildContext context, String? lessonId) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return TextField(
+      controller: _topicController,
+      maxLines: 1,
+      textInputAction: TextInputAction.done,
+      decoration: InputDecoration(
+        hintText: 'Тема занятия (необязательно)',
+        prefixIcon: Icon(Icons.bookmark_outline, color: colorScheme.primary, size: 20),
+        filled: true,
+        fillColor: colorScheme.surfaceContainerHighest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      onChanged: (value) {
+        if (lessonId == null) return;
+        _topicDebounce?.cancel();
+        _topicDebounce = Timer(const Duration(milliseconds: 700), () {
+          ref.read(lessonRepositoryProvider).updateTopic(lessonId, value.trim().isEmpty ? null : value.trim());
+        });
+      },
+    );
+  }
+
+  void _showQrSheet(BuildContext context, String lessonId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _QrSheet(lessonId: lessonId),
     );
   }
 
@@ -537,6 +602,60 @@ class _TeacherAttendanceMarkScreenState
       child: const Text(
         'Подтвердить',
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class _QrSheet extends StatelessWidget {
+  final String lessonId;
+
+  const _QrSheet({required this.lessonId});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 16, 32, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'QR для самоотметки',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Студенты сканируют этот код через приложение',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: QrImageView(
+              data: lessonId,
+              version: QrVersions.auto,
+              size: 220,
+            ),
+          ),
+        ],
       ),
     );
   }

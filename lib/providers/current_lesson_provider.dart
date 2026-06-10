@@ -13,87 +13,136 @@ final currentLessonProvider =
 
 class CurrentLessonNotifier extends StateNotifier<LessonModel?> {
   final LessonRepository _repository;
-  StreamSubscription? _statusSubscription;
+
+  StreamSubscription? _lessonStreamSub;
+  StreamSubscription? _realtimeSub;
+
+  /// ID урока, статус которого отслеживается через единый Realtime-канал.
+  String? _trackedLessonId;
+
+  bool _createAttempted = false;
 
   CurrentLessonNotifier(this._repository) : super(null);
+
+  // ── Student ────────────────────────────────────────────────────────────────
 
   Future<void> loadCurrentLesson(String groupId) async {
     final lesson = await _repository.getCurrentLesson(groupId);
     state = lesson;
-    if (lesson?.id != null) _startStatusStream(lesson!.id!);
+    if (lesson?.id != null) {
+      _trackedLessonId = lesson!.id;
+      _startLessonsRealtime();
+    }
   }
 
   Future<void> loadCurrentLessonForTeacher(String teacherId) async {
     final lesson = await _repository.getCurrentLessonForTeacher(teacherId);
     state = lesson;
-    if (lesson?.id != null) _startStatusStream(lesson!.id!);
+    if (lesson?.id != null) {
+      _trackedLessonId = lesson!.id;
+      _startLessonsRealtime();
+    }
   }
 
-  /// Личный режим: текущее занятие, а если его нет — ближайшее на сегодня.
   Future<void> loadCurrentOrNextLesson(String groupId) async {
     var lesson = await _repository.getCurrentLesson(groupId);
     lesson ??= await _repository.getNextLesson(groupId);
     state = lesson;
     if (lesson?.id != null && !lesson!.isUpcoming) {
-      _startStatusStream(lesson.id!);
+      _trackedLessonId = lesson.id;
+      _startLessonsRealtime();
     }
   }
 
-  /// Личный режим (преподаватель): текущее или ближайшее занятие.
+  // ── Teacher (reactive) ─────────────────────────────────────────────────────
+
   Future<void> loadCurrentOrNextLessonForTeacher(String teacherId) async {
-    var lesson = await _repository.getCurrentLessonForTeacher(teacherId);
-    lesson ??= await _repository.getNextLessonForTeacher(teacherId);
-    state = lesson;
-    if (lesson?.id != null && !lesson!.isUpcoming) {
-      _startStatusStream(lesson.id!);
-    }
+    _createAttempted = false;
+
+    await _lessonStreamSub?.cancel();
+
+    _lessonStreamSub = _repository
+        .watchCurrentOrNextLessonForTeacher(teacherId)
+        .listen((lesson) async {
+          state = lesson;
+
+          if (lesson != null) {
+            if (lesson.id != null && !lesson.isUpcoming) {
+              _trackedLessonId = lesson.id;
+            }
+            return;
+          }
+
+          if (_createAttempted) return;
+          _createAttempted = true;
+
+          final fallback = await _repository.getCurrentLessonForTeacher(teacherId);
+          if (fallback != null) {
+            state = fallback;
+            if (fallback.id != null && !fallback.isUpcoming) {
+              _trackedLessonId = fallback.id;
+            }
+          }
+        });
+
+    _startLessonsRealtime();
   }
 
-  /// Обновляет статус на сервере и локально. Офлайн-безопасен: не бросает исключение.
+  // ── Status writes ──────────────────────────────────────────────────────────
+
   Future<void> updateLessonStatus(LessonAttendanceStatus status) async {
     if (state?.id == null) return;
     await _repository.updateStatus(state!.id!, status);
     state = state!.copyWith(status: status);
   }
 
-  /// Запрашивает актуальный статус из Supabase. Только онлайн.
   Future<LessonAttendanceStatus> getFreshStatus() {
     if (state?.id == null) return Future.value(LessonAttendanceStatus.free);
     return _repository.getFreshStatus(state!.id!);
   }
 
-  /// Обновляет статус только в памяти (без сетевого вызова).
   void updateStatus(LessonAttendanceStatus newStatus) {
     if (state == null) return;
     state = state!.copyWith(status: newStatus);
   }
 
-  void _startStatusStream(String lessonId) {
-    _statusSubscription?.cancel();
-    _statusSubscription = _repository.watchStatus(lessonId).listen(
-      (status) {
-        if (status != null && state != null && state!.status != status) {
-          AppLogger.info(
-            'Realtime: статус урока изменился на $status',
-            'CurrentLessonNotifier',
+  // ── Private ────────────────────────────────────────────────────────────────
+
+  /// Единый Supabase Realtime-канал для таблицы lessons.
+  /// Обновляет Drift-кэш и проверяет изменение статуса отслеживаемого урока.
+  void _startLessonsRealtime() {
+    _realtimeSub?.cancel();
+    _realtimeSub = _repository.watchLessonsRealtime().listen(
+      (raw) {
+        final lessonId = _trackedLessonId;
+        if (lessonId == null || state == null) return;
+        try {
+          final match = raw.firstWhere(
+            (r) => r['id'] == lessonId,
+            orElse: () => {},
           );
-          state = state!.copyWith(status: status);
-        }
+          if (match.isEmpty) return;
+          final newStatus = LessonAttendanceStatus.fromString(
+            match['attendance_status'] as String?,
+          );
+          if (state!.status != newStatus) {
+            AppLogger.info(
+              'Realtime: статус урока изменился на $newStatus',
+              'CurrentLessonNotifier',
+            );
+            state = state!.copyWith(status: newStatus);
+          }
+        } catch (_) {}
       },
-      onError: (error) {
-        AppLogger.error(
-          'Realtime: ошибка в стриме урока',
-          error,
-          null,
-          'CurrentLessonNotifier',
-        );
-      },
+      onError: (e) =>
+          AppLogger.warning('Realtime lessons error: $e', 'CurrentLessonNotifier'),
     );
   }
 
   @override
   void dispose() {
-    _statusSubscription?.cancel();
+    _lessonStreamSub?.cancel();
+    _realtimeSub?.cancel();
     super.dispose();
   }
 }

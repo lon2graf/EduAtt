@@ -83,6 +83,26 @@ class LessonAttendances extends Table {
   DateTimeColumn get updatedAt => dateTime().nullable()();
   // Время изменения на сервере Supabase — используется для delta sync
   DateTimeColumn get serverUpdatedAt => dateTime().nullable()();
+  // null = не рассмотрено, true = уважительная, false = неуважительная
+  BoolColumn get isExcused => boolean().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// --- Объяснительные ---
+class ExcuseRequests extends Table {
+  TextColumn get id => text()();
+  TextColumn get lessonId => text().references(Lessons, #id)();
+  TextColumn get studentId => text().references(Students, #id)();
+  // illness / family / transport / event / other
+  TextColumn get reasonType => text()();
+  TextColumn get description => text().nullable()();
+  // pending / approved / rejected
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get reviewedBy => text().nullable()(); // teacher_id
+  DateTimeColumn get reviewedAt => dateTime().nullable()();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -97,13 +117,14 @@ class LessonAttendances extends Table {
     Schedules,
     Lessons,
     LessonAttendances,
+    ExcuseRequests,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'edu_att_local_db'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -126,11 +147,31 @@ class AppDatabase extends _$AppDatabase {
           'ALTER TABLE lessons ADD COLUMN server_updated_at INTEGER',
         );
       }
+      if (from < 5) {
+        await customStatement(
+          'ALTER TABLE lesson_attendances ADD COLUMN is_excused INTEGER',
+        );
+        await customStatement('''
+          CREATE TABLE IF NOT EXISTS excuse_requests (
+            id TEXT NOT NULL PRIMARY KEY,
+            lesson_id TEXT NOT NULL REFERENCES lessons(id),
+            student_id TEXT NOT NULL REFERENCES students(id),
+            reason_type TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at INTEGER NOT NULL,
+            reviewed_by TEXT,
+            reviewed_at INTEGER,
+            is_synced INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
+      }
     },
   );
 
   /// Удаляет все локальные данные в порядке, обратном FK-зависимостям.
   Future<void> clearAllData() => transaction(() async {
+    await customStatement('DELETE FROM excuse_requests');
     await delete(lessonAttendances).go();
     await delete(lessons).go();
     await delete(schedules).go();

@@ -13,6 +13,8 @@ class SharedPreferencesService {
   static const String _teacherIdKey = 'teacher_id';
   static const String _themeKey = 'app_theme_mode';
   static const String _mascotEnabledKey = 'mascot_enabled';
+  static const String _mascotAnimationKey = 'mascot_animation';
+  static const String _onboardingSeenKey = 'onboarding_seen';
 
   static Future<SharedPreferences> get _instance async =>
       await SharedPreferences.getInstance();
@@ -162,9 +164,28 @@ class SharedPreferencesService {
     await prefs.setBool(_mascotEnabledKey, enabled);
   }
 
-  // Чтение настройки (по умолчанию true)
   static Future<bool> getMascotEnabled() async {
     final prefs = await _instance;
     return prefs.getBool(_mascotEnabledKey) ?? true;
+  }
+
+  static Future<void> setMascotAnimation(bool enabled) async {
+    final prefs = await _instance;
+    await prefs.setBool(_mascotAnimationKey, enabled);
+  }
+
+  static Future<bool> getMascotAnimation() async {
+    final prefs = await _instance;
+    return prefs.getBool(_mascotAnimationKey) ?? true;
+  }
+
+  static Future<bool> isOnboardingSeen() async {
+    final prefs = await _instance;
+    return prefs.getBool(_onboardingSeenKey) ?? false;
+  }
+
+  static Future<void> setOnboardingSeen() async {
+    final prefs = await _instance;
+    await prefs.setBool(_onboardingSeenKey, true);
   }
 }

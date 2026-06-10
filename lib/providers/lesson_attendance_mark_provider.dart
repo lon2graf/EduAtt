@@ -75,6 +75,9 @@ class LessonAttendanceMarkNotifier
       (List<Map<String, dynamic>> data) {
         if (data.isEmpty) return;
 
+        // Записываем в Drift — единственный путь realtime → локальная БД для всех ролей.
+        _repository.upsertFromRemote(data).catchError((_) {});
+
         for (var row in data) {
           final studentIdFromDb = row['student_id'].toString();
           final newStatus = AttendanceStatus.fromString(

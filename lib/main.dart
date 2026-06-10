@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:edu_att/supabase/supabase_config.dart';
 
 import 'package:edu_att/data/remote/shared_preferences_service.dart';
@@ -12,8 +13,11 @@ import 'package:edu_att/theme/theme_provider.dart';
 import 'package:edu_att/theme/app_theme.dart';
 import 'package:edu_att/utils/app_logger.dart';
 
-// Импортируем наш файл с роутером
 import 'package:edu_att/router/app_router.dart';
+
+/// Роутер инициализируется в main() с корректным initialLocation —
+/// до runApp, чтобы не было мелькания MainMenuScreen перед онбордингом.
+late final GoRouter appRouter;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +28,9 @@ void main() async {
   } catch (e, stackTrace) {
     AppLogger.error('Ошибка при инициализации', e, stackTrace, 'main');
   }
+
+  final onboardingSeen = await SharedPreferencesService.isOnboardingSeen();
+  appRouter = createAppRouter(onboardingSeen ? '/' : '/onboarding');
 
   runApp(const ProviderScope(child: EduAttApp()));
 }
@@ -47,23 +54,29 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
   }
 
   Future<void> _checkAndAutoLogin() async {
-    final userType = await SharedPreferencesService.getUserType();
-    bool loginSuccess = false;
+    try {
+      final userType = await SharedPreferencesService.getUserType();
 
-    if (userType == 'student') {
-      loginSuccess = await _tryAutoLoginStudent();
-    } else if (userType == 'teacher') {
-      loginSuccess = await _tryAutoLoginTeacher();
-    } else if (userType == 'personal') {
-      loginSuccess = await _tryAutoLoginPersonal();
-    }
+      bool loginSuccess = false;
 
-    if (mounted) {
-      setState(() {
-        _isCheckingSession = false;
-        _shouldRedirectToHome = loginSuccess;
-        _userType = userType ?? '';
-      });
+      if (userType == 'student') {
+        loginSuccess = await _tryAutoLoginStudent();
+      } else if (userType == 'teacher') {
+        loginSuccess = await _tryAutoLoginTeacher();
+      } else if (userType == 'personal') {
+        loginSuccess = await _tryAutoLoginPersonal();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isCheckingSession = false;
+          _shouldRedirectToHome = loginSuccess;
+          _userType = userType ?? '';
+        });
+      }
+    } catch (e, stack) {
+      AppLogger.error('Ошибка при проверке сессии', e, stack, 'main');
+      if (mounted) setState(() => _isCheckingSession = false);
     }
   }
 
@@ -91,39 +104,47 @@ class _EduAttAppState extends ConsumerState<EduAttApp> {
   }
 
   Future<bool> _tryAutoLoginStudent() async {
-    final credentials = await SharedPreferencesService.getStudentCredentials();
-    if (credentials != null) {
-      final success = await ref
-          .read(currentStudentProvider.notifier)
-          .autoLogin(
-            institutionId: credentials['institutionId']!,
-            email: credentials['login']!,
-            password: credentials['password']!,
-          );
-      return success;
+    try {
+      final credentials = await SharedPreferencesService.getStudentCredentials();
+      if (credentials != null) {
+        return await ref
+            .read(currentStudentProvider.notifier)
+            .autoLogin(
+              institutionId: credentials['institutionId']!,
+              email: credentials['login']!,
+              password: credentials['password']!,
+            );
+      }
+      return false;
+    } catch (e) {
+      AppLogger.error('Ошибка автовхода студента', e, null, 'main');
+      return false;
     }
-    return false;
   }
 
   Future<bool> _tryAutoLoginTeacher() async {
-    final credentials = await SharedPreferencesService.getTeacherCredentials();
-    if (credentials != null) {
-      return await ref
-          .read(teacherProvider.notifier)
-          .autoLogin(
-            email: credentials['login']!,
-            password: credentials['password']!,
-            institutionId: credentials['institutionId']!,
-          );
+    try {
+      final credentials = await SharedPreferencesService.getTeacherCredentials();
+      if (credentials != null) {
+        return await ref
+            .read(teacherProvider.notifier)
+            .autoLogin(
+              email: credentials['login']!,
+              password: credentials['password']!,
+              institutionId: credentials['institutionId']!,
+            );
+      }
+      return false;
+    } catch (e) {
+      AppLogger.error('Ошибка автовхода преподавателя', e, null, 'main');
+      return false;
     }
-    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     final appThemeType = ref.watch(themeProvider);
 
-    // Логика редиректа
     if (_shouldRedirectToHome) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Используем глобальную переменную appRouter

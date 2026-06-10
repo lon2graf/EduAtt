@@ -169,6 +169,11 @@ class LessonsAttendanceService extends BaseService {
     }
   }
 
+  /// Возвращает посещаемость группы за указанный диапазон дат.
+  ///
+  /// Два отдельных запроса вместо одного с вложенными фильтрами:
+  /// PostgREST не поддерживает фильтрацию глубже одного уровня вложенности
+  /// (lessons.schedule.group_id — два уровня, молча игнорируется).
   static Future<List<LessonAttendanceModel>> getWeeklyGroupAttendance({
     required String groupId,
     required DateTime startDate,
@@ -177,46 +182,51 @@ class LessonsAttendanceService extends BaseService {
     final startStr = _formatDate(startDate);
     final endStr = _formatDate(endDate);
     try {
-      final response = await BaseService.client
+      // Шаг 1: уроки группы за период (schedule — 1 уровень вложенности, работает корректно).
+      final lessonsResp = await BaseService.client
+          .from('lessons')
+          .select(
+            'id, schedule!inner(date, start_time, end_time, group_id, '
+            'subjects!inner(name), teachers!inner(name, surname))',
+          )
+          .eq('schedule.group_id', groupId)
+          .gte('schedule.date', startStr)
+          .lte('schedule.date', endStr);
+
+      if ((lessonsResp as List).isEmpty) return [];
+
+      final lessonMap = <String, Map<String, dynamic>>{
+        for (final l in lessonsResp)
+          l['id'] as String: l,
+      };
+
+      // Шаг 2: посещаемость для найденных уроков.
+      final attendanceResp = await BaseService.client
           .from('lesson_attendances')
-          .select('''
-          id,
-        lesson_id,
-        student_id,
-        status,
-        students (name, surname),
-        lessons (
-          schedule (
-            date,
-            start_time,
-            end_time,
-            group_id,
-            subject_id,
-            teacher_id,
-            subjects (name),
-            teachers (name, surname)
-            )
-            )
-            
-    ''')
-          .eq('lessons.schedule.group_id', groupId)
-          .gte('lessons.schedule.date', startStr)
-          .lte('lessons.schedule.date', endStr);
+          .select('id, lesson_id, student_id, status, students(name, surname)')
+          .inFilter('lesson_id', lessonMap.keys.toList());
 
-      final List<LessonAttendanceModel> attendances =
-          (response as List)
-              .map((json) => LessonAttendanceModel.fromNestedJson(json))
-              .toList();
+      // Собираем вложенную структуру, которую ожидает fromNestedJson.
+      final records =
+          (attendanceResp as List).map((raw) {
+            final json = Map<String, dynamic>.from(raw);
+            json['lessons'] = lessonMap[json['lesson_id'] as String];
+            return LessonAttendanceModel.fromNestedJson(json);
+          }).toList()
+            ..sort(
+              (a, b) => (a.lessonDate ?? DateTime(2000)).compareTo(
+                b.lessonDate ?? DateTime(2000),
+              ),
+            );
 
-      attendances.sort((a, b) {
-        return (a.lessonDate ?? DateTime(2000)).compareTo(
-          b.lessonDate ?? DateTime(2000),
-        );
-      });
-
-      return attendances;
+      return records;
     } catch (e) {
-      AppLogger.error('Ошибка в getWeeklyGroupAttendance', e, null, 'LessonsAttendanceService');
+      AppLogger.error(
+        'Ошибка в getWeeklyGroupAttendance',
+        e,
+        null,
+        'LessonsAttendanceService',
+      );
       return [];
     }
   }
@@ -255,11 +265,14 @@ class LessonsAttendanceService extends BaseService {
     return BaseService.executeOrThrow(
       operation: () async {
         // Используем upsert: если записи нет — создаст, если есть — обновит статус
-        await BaseService.client.from('lesson_attendances').upsert({
-          'lesson_id': lessonId,
-          'student_id': studentId,
-          'status': 'present', // Студент подтверждает свое присутствие
-        });
+        await BaseService.client.from('lesson_attendances').upsert(
+          {
+            'lesson_id': lessonId,
+            'student_id': studentId,
+            'status': 'present',
+          },
+          onConflict: 'lesson_id,student_id',
+        );
         AppLogger.info('Студент $studentId отметил себя на уроке $lessonId', 'LessonsAttendanceService');
       },
       errorContext: 'markSelfPresent',

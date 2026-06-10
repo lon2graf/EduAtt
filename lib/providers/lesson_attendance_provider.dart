@@ -36,15 +36,18 @@ class AttendanceNotifier extends StateNotifier<List<LessonAttendanceModel>> {
 
     if (_isPersonalMode) return;
 
-    // 2. Supabase real-time → в БД, не напрямую в state
-    _realtimeSub =
-        _repository.watchRemoteStudent(studentId).listen(
-          (data) => _repository.upsertFromRemote(data).catchError((_) {}),
-          onError: (e) => AppLogger.warning(
-            'Ошибка real-time посещаемости',
-            'AttendanceNotifier',
-          ),
-        );
+    // 2. Supabase Realtime (eq: student_id) → Drift.
+    // Нужен для ВСЕХ студентов, а не только старост: обычный студент никогда
+    // не открывает ведомость (watchLesson по lesson_id не запускается),
+    // поэтому единственный способ получить отметку преподавателя в реальном
+    // времени — этот канал.
+    _realtimeSub = _repository.watchRemoteStudent(studentId).listen(
+      (data) => _repository.upsertFromRemote(data).catchError((_) {}),
+      onError: (e) => AppLogger.warning(
+        'Ошибка real-time посещаемости',
+        'AttendanceNotifier',
+      ),
+    );
 
     // 3. Background delta sync (fire-and-forget)
     _backgroundSync(studentId);

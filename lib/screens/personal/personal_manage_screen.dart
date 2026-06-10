@@ -295,19 +295,7 @@ class _BackupTab extends ConsumerWidget {
           title: 'Экспорт данных',
           subtitle: 'Сохранить все данные в JSON-файл',
           color: Colors.green,
-          onTap: () async {
-            try {
-              final path = await service.exportToFile();
-              if (!context.mounted) return;
-              if (path != null) {
-                EduSnackBar.showSuccess(context, ref, 'Файл сохранён:\n$path');
-              }
-            } catch (e) {
-              if (context.mounted) {
-                EduSnackBar.showError(context, ref, 'Ошибка экспорта: $e');
-              }
-            }
-          },
+          onTap: () => _showExportSheet(context, ref, service),
         ),
         const SizedBox(height: 16),
         _BackupCard(
@@ -541,6 +529,89 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
 }
 
 // ─── Диалог ввода строки ──────────────────────────────────────────────────────
+
+void _showExportSheet(
+  BuildContext context,
+  WidgetRef ref,
+  BackupService service,
+) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Экспорт данных',
+              style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0x1A4CAF50),
+                child: Icon(Icons.save_alt_outlined, color: Colors.green),
+              ),
+              title: const Text('Сохранить в файл'),
+              subtitle: const Text('Выбрать папку на устройстве'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                try {
+                  final path = await service.exportToFile();
+                  if (!context.mounted) return;
+                  if (path != null) {
+                    EduSnackBar.showSuccess(context, ref, 'Файл сохранён:\n$path');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    EduSnackBar.showError(context, ref, 'Ошибка экспорта: $e');
+                  }
+                }
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0x1A2196F3),
+                child: Icon(Icons.share_outlined, color: Colors.blue),
+              ),
+              title: const Text('Поделиться'),
+              subtitle: const Text('Отправить в Telegram, облако и т.д.'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                try {
+                  await service.shareFile();
+                } catch (e) {
+                  if (context.mounted) {
+                    EduSnackBar.showError(context, ref, 'Ошибка: $e');
+                  }
+                }
+              },
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 Future<String?> _inputDialog(
   BuildContext context,
