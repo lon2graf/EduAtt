@@ -23,6 +23,13 @@ class ExcuseDao {
             ..where((e) => e.lessonId.equals(lessonId)))
           .get();
 
+  Future<List<ExcuseRequest>> getForLessonIds(List<String> lessonIds) {
+    if (lessonIds.isEmpty) return Future.value([]);
+    return (_db.select(_db.excuseRequests)
+          ..where((e) => e.lessonId.isIn(lessonIds)))
+        .get();
+  }
+
   Stream<List<ExcuseRequest>> watchForStudent(String studentId) =>
       (_db.select(_db.excuseRequests)
             ..where((e) => e.studentId.equals(studentId))
@@ -57,6 +64,26 @@ class ExcuseDao {
           isSynced: const Value(false),
         ),
       );
+
+  /// Реактивный стрим количества ожидающих объяснительных для преподавателя.
+  /// Джойнит excuse_requests → lessons → schedules по teacherId.
+  Stream<int> watchPendingCountForTeacher(String teacherId) {
+    final query = _db.select(_db.excuseRequests).join([
+      innerJoin(
+        _db.lessons,
+        _db.lessons.id.equalsExp(_db.excuseRequests.lessonId),
+      ),
+      innerJoin(
+        _db.schedules,
+        _db.schedules.id.equalsExp(_db.lessons.scheduleId),
+      ),
+    ])
+      ..where(
+        _db.excuseRequests.status.equals('pending') &
+            _db.schedules.teacherId.equals(teacherId),
+      );
+    return query.watch().map((rows) => rows.length);
+  }
 
   ExcuseRequestModel fromRow(ExcuseRequest row) => ExcuseRequestModel(
     id: row.id,

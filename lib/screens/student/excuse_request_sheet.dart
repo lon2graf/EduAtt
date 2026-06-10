@@ -40,7 +40,7 @@ class _ExcuseRequestSheetState extends ConsumerState<ExcuseRequestSheet> {
 
     setState(() => _submitting = true);
     try {
-      await ref.read(excuseRepositoryProvider).submitExcuse(
+      final result = await ref.read(excuseRepositoryProvider).submitExcuse(
         lessonId: widget.attendance.lessonId,
         studentId: student!.id!,
         reasonType: _selectedReason!,
@@ -51,15 +51,19 @@ class _ExcuseRequestSheetState extends ConsumerState<ExcuseRequestSheet> {
       if (mounted) {
         Navigator.of(context).pop();
         widget.onSubmitted?.call();
-        EduSnackBar.showSuccess(
-          context,
-          ref,
-          'Объяснительная отправлена',
-        );
+        if (result.isSynced) {
+          EduSnackBar.showSuccess(context, ref, 'Объяснительная отправлена');
+        } else {
+          EduSnackBar.showInfo(
+            context,
+            ref,
+            'Сохранено. Отправим при восстановлении сети',
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        EduSnackBar.showError(context, ref, 'Не удалось отправить');
+        EduSnackBar.showError(context, ref, 'Не удалось сохранить');
       }
     } finally {
       if (mounted) setState(() => _submitting = false);

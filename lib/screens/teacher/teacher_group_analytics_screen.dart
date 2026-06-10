@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 
+import 'package:edu_att/data/repositories/excuse_repository.dart';
+import 'package:edu_att/models/excuse_request_model.dart';
 import 'package:edu_att/models/group_analytics_data.dart';
+import 'package:edu_att/models/lesson_attendance_model.dart';
 import 'package:edu_att/providers/group_analytics_provider.dart';
 import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/mascot/mascot_widget.dart';
@@ -30,6 +33,47 @@ class TeacherGroupAnalyticsScreen extends ConsumerStatefulWidget {
 class _TeacherGroupAnalyticsScreenState
     extends ConsumerState<TeacherGroupAnalyticsScreen> {
   bool _isExporting = false;
+
+  Map<ExcuseReasonType, int> _reasonCounts = {};
+  int _excuseApproved = 0;
+  int _excuseRejected = 0;
+  int _excusePending = 0;
+
+  Future<void> _loadExcuseStats(List<LessonAttendanceModel> records) async {
+    if (records.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _reasonCounts = {};
+          _excuseApproved = _excuseRejected = _excusePending = 0;
+        });
+      }
+      return;
+    }
+    final lessonIds = records.map((r) => r.lessonId).toSet().toList();
+    final excuses =
+        await ref.read(excuseRepositoryProvider).getForLessonIds(lessonIds);
+    final counts = <ExcuseReasonType, int>{};
+    int approved = 0, rejected = 0, pending = 0;
+    for (final e in excuses) {
+      counts[e.reasonType] = (counts[e.reasonType] ?? 0) + 1;
+      switch (e.status) {
+        case ExcuseStatusType.approved:
+          approved++;
+        case ExcuseStatusType.rejected:
+          rejected++;
+        case ExcuseStatusType.pending:
+          pending++;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _reasonCounts = counts;
+        _excuseApproved = approved;
+        _excuseRejected = rejected;
+        _excusePending = pending;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -132,6 +176,19 @@ class _TeacherGroupAnalyticsScreenState
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final state = ref.watch(groupAnalyticsProvider);
+
+    // Перезагружаем статистику причин при смене данных или фильтра предмета
+    ref.listen<GroupAnalyticsState>(groupAnalyticsProvider, (prev, next) {
+      final dataLoaded = (prev?.isLoading ?? false) && !next.isLoading;
+      final subjectChanged = prev?.selectedSubject != next.selectedSubject;
+      if ((dataLoaded || subjectChanged) && !next.isLoading) {
+        final all = ref.read(groupAnalyticsProvider.notifier).records;
+        final filtered = next.selectedSubject != null
+            ? all.where((r) => r.subjectName == next.selectedSubject).toList()
+            : all;
+        _loadExcuseStats(filtered);
+      }
+    });
 
     return Scaffold(
       body: CustomScrollView(
@@ -286,6 +343,21 @@ class _TeacherGroupAnalyticsScreenState
                 child: _StudentBarsCard(students: state.data.byStudent),
               ),
             ),
+
+            // --- Причины пропусков ---
+            if (_reasonCounts.isNotEmpty ||
+                _excuseApproved + _excuseRejected + _excusePending > 0)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: _ExcuseReasonsCard(
+                    reasonCounts: _reasonCounts,
+                    approved: _excuseApproved,
+                    rejected: _excuseRejected,
+                    pending: _excusePending,
+                  ),
+                ),
+              ),
 
             const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
           ],
@@ -852,6 +924,207 @@ class _StudentBarsCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Причины пропусков ────────────────────────────────────────────────────────
+
+class _ExcuseReasonsCard extends StatelessWidget {
+  final Map<ExcuseReasonType, int> reasonCounts;
+  final int approved;
+  final int rejected;
+  final int pending;
+
+  const _ExcuseReasonsCard({
+    required this.reasonCounts,
+    required this.approved,
+    required this.rejected,
+    required this.pending,
+  });
+
+  int get _total => approved + rejected + pending;
+  int get _max =>
+      reasonCounts.values.fold(0, (acc, v) => v > acc ? v : acc);
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Причины пропусков',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Объяснительных: $_total',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...ExcuseReasonType.values.map((reason) {
+            final count = reasonCounts[reason] ?? 0;
+            final fraction = _max > 0 ? count / _max : 0.0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Icon(reason.icon, size: 16,
+                      color: colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      reason.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: fraction),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, value, __) => LinearProgressIndicator(
+                          value: value,
+                          minHeight: 8,
+                          backgroundColor:
+                              colorScheme.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation(
+                            count > 0
+                                ? colorScheme.primary
+                                : Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 20,
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: count > 0
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 4),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _SummaryChip(
+                label: 'Принято',
+                count: approved,
+                color: Colors.green,
+                colorScheme: colorScheme,
+              ),
+              const SizedBox(width: 8),
+              _SummaryChip(
+                label: 'Отклонено',
+                count: rejected,
+                color: Colors.red,
+                colorScheme: colorScheme,
+              ),
+              const SizedBox(width: 8),
+              _SummaryChip(
+                label: 'Ожидает',
+                count: pending,
+                color: Colors.orange,
+                colorScheme: colorScheme,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  final ColorScheme colorScheme;
+
+  const _SummaryChip({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            '$label: $count',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],

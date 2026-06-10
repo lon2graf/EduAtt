@@ -80,6 +80,15 @@ Future<List<int>> generateAttendanceReportPdf(AttendanceReportData data) async {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
+                  pw.Text(
+                    'Обозначения: + — присутствовал,  – — отсутствовал,  У — уважительная причина,  Н — неуважительная причина,  ОП — опоздал,  ОП/У — опоздал (уваж.)',
+                    style: pw.TextStyle(
+                      font: regular,
+                      fontSize: 7,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
                   pw.Text('Подпись преподавателя: _________________________'),
                   pw.SizedBox(height: 8),
                   pw.Text('Подпись старосты: _________________________'),

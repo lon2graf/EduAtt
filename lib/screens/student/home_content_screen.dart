@@ -17,6 +17,7 @@ import 'package:edu_att/providers/lesson_attendance_mark_provider.dart';
 import 'package:edu_att/providers/connectivity_provider.dart';
 import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
+import 'package:edu_att/data/repositories/excuse_repository.dart';
 
 // Репозитории и Утилиты
 import 'package:edu_att/data/remote/lessons_attendace_service.dart';
@@ -151,6 +152,10 @@ class _HomeContentScreenState extends ConsumerState<HomeContentScreen> {
         if (student != null) {
           ref.read(attendanceProvider.notifier).syncAttendanceDelta(student.id!);
           ref.read(scheduleProvider.notifier).syncSchedule();
+          // Сначала отправляем pending, затем подтягиваем решения преподавателя
+          ref.read(excuseRepositoryProvider).syncPending().then((_) {
+            ref.read(excuseRepositoryProvider).syncForStudent(student.id!);
+          });
         }
       }
     });

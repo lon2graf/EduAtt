@@ -4,6 +4,7 @@ import 'package:edu_att/data/local_db/dao/excuse_dao.dart';
 import 'package:edu_att/data/remote/excuse_service.dart';
 import 'package:edu_att/models/excuse_request_model.dart';
 import 'package:edu_att/providers/app_database_provider.dart';
+import 'package:edu_att/providers/teacher_provider.dart';
 import 'package:edu_att/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -11,6 +12,15 @@ import 'package:uuid/uuid.dart';
 final excuseRepositoryProvider = Provider<ExcuseRepository>(
   (ref) => ExcuseRepository(ref.watch(appDatabaseProvider)),
 );
+
+/// Стрим количества pending-объяснительных для текущего преподавателя.
+final pendingExcuseCountProvider = StreamProvider.autoDispose<int>((ref) {
+  final teacher = ref.watch(teacherProvider);
+  if (teacher?.id == null) return Stream.value(0);
+  return ref
+      .watch(excuseRepositoryProvider)
+      .watchPendingCountForTeacher(teacher!.id!);
+});
 
 class ExcuseRepository {
   final AppDatabase _db;
@@ -41,29 +51,40 @@ class ExcuseRepository {
 
     await _dao.upsert(companion);
 
-    final model = ExcuseRequestModel(
+    var synced = false;
+    final json = {
+      'id': id,
+      'lesson_id': lessonId,
+      'student_id': studentId,
+      'reason_type': reasonType.toDbValue,
+      'description': description,
+      'status': 'pending',
+      'created_at': now.toIso8601String(),
+    };
+
+    try {
+      await ExcuseService.submit(json);
+      await _dao.markSynced([id]);
+      synced = true;
+    } catch (e) {
+      AppLogger.warning('submitExcuse: отложена синхронизация ($e)', 'ExcuseRepository');
+    }
+
+    return ExcuseRequestModel(
       id: id,
       lessonId: lessonId,
       studentId: studentId,
       reasonType: reasonType,
       description: description,
       createdAt: now,
+      isSynced: synced,
     );
-
-    // Best-effort remote sync
-    try {
-      await ExcuseService.submit(model.toJson());
-      await _dao.markSynced([id]);
-    } catch (e) {
-      AppLogger.warning('submitExcuse: отложена синхронизация ($e)', 'ExcuseRepository');
-    }
-
-    return model;
   }
 
   /// Преподаватель одобряет или отклоняет объяснительную.
   /// Обновляет статус объяснительной и поле is_excused в lesson_attendances.
-  Future<void> reviewExcuse({
+  /// Возвращает true если данные синхронизированы с сервером.
+  Future<bool> reviewExcuse({
     required String excuseId,
     required bool approved,
     required String teacherId,
@@ -98,9 +119,19 @@ class ExcuseRepository {
         isExcused: approved,
       );
       await _dao.markSynced([excuseId]);
+      return true;
     } catch (e) {
       AppLogger.warning('reviewExcuse: отложена синхронизация ($e)', 'ExcuseRepository');
+      return false;
     }
+  }
+
+  /// Загружает объяснительные для набора уроков (для аналитики).
+  Future<List<ExcuseRequestModel>> getForLessonIds(
+    List<String> lessonIds,
+  ) async {
+    final rows = await _dao.getForLessonIds(lessonIds);
+    return rows.map(_dao.fromRow).toList();
   }
 
   /// Загружает объяснительные для урока (для экрана преподавателя).
@@ -120,6 +151,10 @@ class ExcuseRepository {
       return [];
     }
   }
+
+  /// Реактивный стрим количества pending-объяснительных для преподавателя.
+  Stream<int> watchPendingCountForTeacher(String teacherId) =>
+      _dao.watchPendingCountForTeacher(teacherId);
 
   /// Реактивный стрим объяснительных студента (для экрана пропусков).
   Stream<List<ExcuseRequestModel>> watchForStudent(String studentId) =>
@@ -185,6 +220,28 @@ class ExcuseRepository {
           await _dao.upsert(_companionFromJson(r));
         }
       } catch (_) {}
+    }
+  }
+
+  /// Синхронизирует объяснительные для всех уроков преподавателя из Supabase.
+  /// Вызывается при загрузке главного экрана чтобы бейдж был актуальным.
+  Future<void> syncForTeacher(String teacherId) async {
+    try {
+      final scheduleRows = await (_db.select(_db.schedules)
+            ..where((s) => s.teacherId.equals(teacherId)))
+          .get();
+      if (scheduleRows.isEmpty) return;
+
+      final scheduleIds = scheduleRows.map((s) => s.id).toSet();
+      final lessonRows = await (_db.select(_db.lessons)
+            ..where((l) => l.scheduleId.isIn(scheduleIds)))
+          .get();
+      if (lessonRows.isEmpty) return;
+
+      final lessonIds = lessonRows.map((l) => l.id).toList();
+      await syncForTeacherLessons(lessonIds);
+    } catch (e) {
+      AppLogger.warning('syncForTeacher: $e', 'ExcuseRepository');
     }
   }
 

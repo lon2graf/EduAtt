@@ -30,6 +30,8 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
   bool _showCharts = false;
   String? _selectedSubject;
   AttendanceStatus? _selectedStatus;
+  // null = все, true = уважительные, false = неуважительные
+  bool? _excuseFilter;
 
   bool _isLoading = true;
   Timer? _skeletonTimeout;
@@ -133,6 +135,7 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
         return false;
       }
       if (_selectedStatus != null && a.status != _selectedStatus) return false;
+      if (_excuseFilter != null && a.isExcused != _excuseFilter) return false;
       return true;
     }).toList();
 
@@ -219,6 +222,24 @@ class _MissesContentScreenState extends ConsumerState<MissesContentScreen> {
                 _selectedStatus == AttendanceStatus.late
                     ? null
                     : AttendanceStatus.late),
+          ),
+          const SizedBox(width: 8),
+          _StatusChip(
+            label: 'Уважительные',
+            selected: _excuseFilter == true,
+            selectedColor: Colors.green.shade600,
+            onTap: () => setState(
+              () => _excuseFilter = _excuseFilter == true ? null : true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          _StatusChip(
+            label: 'Неуважительные',
+            selected: _excuseFilter == false,
+            selectedColor: Colors.red.shade700,
+            onTap: () => setState(
+              () => _excuseFilter = _excuseFilter == false ? null : false,
+            ),
           ),
         ],
       ),

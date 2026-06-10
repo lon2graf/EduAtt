@@ -15,6 +15,7 @@ import 'package:edu_att/providers/connectivity_provider.dart';
 import 'package:edu_att/providers/group_analytics_provider.dart';
 import 'package:edu_att/providers/personal_mode_provider.dart';
 import 'package:edu_att/providers/schedule_provider.dart';
+import 'package:edu_att/data/repositories/excuse_repository.dart';
 
 // --- ВСПОМОГАТЕЛЬНЫЙ ВИДЖЕТ ---
 class LiveIndicator extends StatefulWidget {
@@ -104,6 +105,8 @@ class _TeacherHomeContentScreenState
           .read(groupAnalyticsProvider.notifier)
           .loadForGroup(lesson.groupId, lesson.groupName);
     }
+    // Фоновая синхронизация объяснительных — обновляет бейдж без блокировки UI
+    ref.read(excuseRepositoryProvider).syncForTeacher(teacher.id!);
   }
 
   @override
@@ -133,6 +136,7 @@ class _TeacherHomeContentScreenState
         EduSnackBar.showSuccess(context, ref, 'Соединение восстановлено');
         ref.read(scheduleProvider.notifier).syncSchedule();
         ref.read(lessonAttendanceMarkProvider.notifier).syncPending();
+        ref.read(excuseRepositoryProvider).syncPending();
       }
     });
 
@@ -215,10 +219,16 @@ class _TeacherHomeContentScreenState
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: const Icon(Icons.history_outlined),
-              tooltip: 'История занятий',
-              onPressed: () => context.push('/teacher/history'),
+            Badge(
+              isLabelVisible: (ref.watch(pendingExcuseCountProvider).asData?.value ?? 0) > 0,
+              label: Text(
+                '${ref.watch(pendingExcuseCountProvider).asData?.value ?? 0}',
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.history_outlined),
+                tooltip: 'История занятий',
+                onPressed: () => context.push('/teacher/history'),
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.calendar_month_outlined),

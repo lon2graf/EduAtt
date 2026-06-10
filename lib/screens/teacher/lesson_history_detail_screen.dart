@@ -171,7 +171,7 @@ class _LessonHistoryDetailScreenState extends ConsumerState<LessonHistoryDetailS
         onReview: (approved) async {
           if (attendanceId == null) return;
           try {
-            await ref.read(excuseRepositoryProvider).reviewExcuse(
+            final synced = await ref.read(excuseRepositoryProvider).reviewExcuse(
               excuseId: excuse.id,
               approved: approved,
               teacherId: teacherId,
@@ -186,11 +186,16 @@ class _LessonHistoryDetailScreenState extends ConsumerState<LessonHistoryDetailS
               );
             });
             if (mounted) {
-              EduSnackBar.showSuccess(
-                context,
-                ref,
-                approved ? 'Причина принята' : 'Причина отклонена',
-              );
+              final label = approved ? 'Причина принята' : 'Причина отклонена';
+              if (synced) {
+                EduSnackBar.showSuccess(context, ref, label);
+              } else {
+                EduSnackBar.showInfo(
+                  context,
+                  ref,
+                  '$label (синхронизируем при подключении)',
+                );
+              }
             }
           } catch (e) {
             AppLogger.error('reviewExcuse', e, null, 'LessonHistoryDetailScreen');

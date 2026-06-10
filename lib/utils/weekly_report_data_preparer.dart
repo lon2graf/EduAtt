@@ -74,10 +74,16 @@ class WeeklyReportDataPreparer {
           symbol = '+';
           break;
         case AttendanceStatus.absent:
-          symbol = '–';
+          if (record.isExcused == true) {
+            symbol = 'У';
+          } else if (record.isExcused == false) {
+            symbol = 'Н';
+          } else {
+            symbol = '–';
+          }
           break;
         case AttendanceStatus.late:
-          symbol = 'ОП';
+          symbol = record.isExcused == true ? 'ОП/У' : 'ОП';
           break;
         default:
           symbol = '';

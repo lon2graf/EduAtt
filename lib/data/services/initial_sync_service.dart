@@ -49,6 +49,9 @@ class InitialSyncService {
       onProgress?.call('Загрузка посещаемости...');
       await _syncAttendances(student.id!);
 
+      onProgress?.call('Загрузка объяснительных...');
+      await _syncExcusesForStudent(student.id!);
+
       AppLogger.info('Начальная синхронизация завершена', 'InitialSyncService');
       return const Success(null);
     } catch (e, st) {
@@ -223,6 +226,7 @@ class InitialSyncService {
       _syncLessons(student.groupId),
       _syncStudents(student.groupId),
       _syncAttendances(student.id!),
+      _syncExcusesForStudent(student.id!),
     ]);
 
     AppLogger.info('Delta sync (resume) завершён', 'InitialSyncService');
@@ -240,6 +244,7 @@ class InitialSyncService {
     ]);
     // Зависит от уроков в Drift — запускаем после основного батча
     await _syncAttendancesForTeacher(teacherId);
+    await _syncExcusesForTeacher(teacherId);
 
     AppLogger.info('Delta sync teacher (resume) завершён', 'InitialSyncService');
   }
@@ -279,6 +284,9 @@ class InitialSyncService {
 
       onProgress?.call('Загрузка посещаемости...');
       await _syncAttendancesForTeacher(teacherId);
+
+      onProgress?.call('Загрузка объяснительных...');
+      await _syncExcusesForTeacher(teacherId);
 
       AppLogger.info(
         'Начальная синхронизация преподавателя завершена',
@@ -449,6 +457,107 @@ class InitialSyncService {
 
     AppLogger.info(
       'Синхронизировано ${all.length} отметок посещаемости для преподавателя',
+      'InitialSyncService',
+    );
+  }
+
+  Future<void> _syncExcusesForStudent(String studentId) async {
+    final response = await BaseService.client
+        .from('excuse_requests')
+        .select(
+          'id, lesson_id, student_id, reason_type, description, status, created_at, reviewed_by, reviewed_at',
+        )
+        .eq('student_id', studentId);
+
+    final rows = (response as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) return;
+
+    await _db.batch((b) {
+      b.insertAll(
+        _db.excuseRequests,
+        rows.map(
+          (row) => ExcuseRequestsCompanion.insert(
+            id: row['id'] as String,
+            lessonId: row['lesson_id'] as String,
+            studentId: row['student_id'] as String,
+            reasonType: row['reason_type'] as String,
+            description: Value(row['description'] as String?),
+            status: Value(row['status'] as String? ?? 'pending'),
+            createdAt: DateTime.parse(row['created_at'] as String),
+            reviewedBy: Value(row['reviewed_by'] as String?),
+            reviewedAt: Value(
+              row['reviewed_at'] != null
+                  ? DateTime.tryParse(row['reviewed_at'] as String)
+                  : null,
+            ),
+            isSynced: const Value(true),
+          ),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+
+    AppLogger.info(
+      'Синхронизировано ${rows.length} объяснительных студента',
+      'InitialSyncService',
+    );
+  }
+
+  Future<void> _syncExcusesForTeacher(String teacherId) async {
+    final scheduleRows = await (
+      _db.select(_db.schedules)..where((s) => s.teacherId.equals(teacherId))
+    ).get();
+    if (scheduleRows.isEmpty) return;
+
+    final scheduleIdSet = scheduleRows.map((s) => s.id).toSet();
+    final lessonRows = await _db.select(_db.lessons).get();
+    final lessonIds = lessonRows
+        .where((l) => scheduleIdSet.contains(l.scheduleId))
+        .map((l) => l.id)
+        .toList();
+    if (lessonIds.isEmpty) return;
+
+    const batchSize = 50;
+    final all = <Map<String, dynamic>>[];
+    for (var i = 0; i < lessonIds.length; i += batchSize) {
+      final chunk = lessonIds.skip(i).take(batchSize).toList();
+      final rows = await BaseService.client
+          .from('excuse_requests')
+          .select(
+            'id, lesson_id, student_id, reason_type, description, status, created_at, reviewed_by, reviewed_at',
+          )
+          .inFilter('lesson_id', chunk);
+      all.addAll((rows as List).cast<Map<String, dynamic>>());
+    }
+    if (all.isEmpty) return;
+
+    await _db.batch((b) {
+      b.insertAll(
+        _db.excuseRequests,
+        all.map(
+          (row) => ExcuseRequestsCompanion.insert(
+            id: row['id'] as String,
+            lessonId: row['lesson_id'] as String,
+            studentId: row['student_id'] as String,
+            reasonType: row['reason_type'] as String,
+            description: Value(row['description'] as String?),
+            status: Value(row['status'] as String? ?? 'pending'),
+            createdAt: DateTime.parse(row['created_at'] as String),
+            reviewedBy: Value(row['reviewed_by'] as String?),
+            reviewedAt: Value(
+              row['reviewed_at'] != null
+                  ? DateTime.tryParse(row['reviewed_at'] as String)
+                  : null,
+            ),
+            isSynced: const Value(true),
+          ),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+
+    AppLogger.info(
+      'Синхронизировано ${all.length} объяснительных для преподавателя',
       'InitialSyncService',
     );
   }

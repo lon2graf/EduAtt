@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:edu_att/data/repositories/attendance_repository.dart';
 import 'package:edu_att/data/repositories/i_attendance_repository.dart';
@@ -30,6 +31,8 @@ class LessonAttendanceMarkNotifier
         super([]);
 
   StreamSubscription? _streamSubscription;
+  String? _realtimeLessonId;
+  int _realtimeRetries = 0;
 
   Future<void> initializeAttendance(
     List<StudentModel> groupStudents,
@@ -69,10 +72,16 @@ class LessonAttendanceMarkNotifier
 
   void _startAttendanceStream(String lessonId) {
     if (_isPersonalMode) return;
-    _streamSubscription?.cancel();
+    _realtimeLessonId = lessonId;
+    _realtimeRetries = 0;
+    _subscribeRealtime(lessonId);
+  }
 
+  void _subscribeRealtime(String lessonId) {
+    _streamSubscription?.cancel();
     _streamSubscription = _repository.watchLesson(lessonId).listen(
       (List<Map<String, dynamic>> data) {
+        _realtimeRetries = 0;
         if (data.isEmpty) return;
 
         // Записываем в Drift — единственный путь realtime → локальная БД для всех ролей.
@@ -83,7 +92,6 @@ class LessonAttendanceMarkNotifier
           final newStatus = AttendanceStatus.fromString(
             row['status'] as String?,
           );
-
           state = [
             for (final item in state)
               if (item.studentId == studentIdFromDb)
@@ -95,11 +103,19 @@ class LessonAttendanceMarkNotifier
       },
       onError: (error) {
         AppLogger.error(
-          'Ошибка в Realtime-потоке посещаемости',
+          'Realtime посещаемости: ошибка (попытка $_realtimeRetries)',
           error,
           null,
           'LessonAttendanceMarkNotifier',
         );
+        if (!mounted) return;
+        // Экспоненциальный backoff: 2с → 4с → 8с → ... → макс 30с
+        final delaySec = min(30, 2 << _realtimeRetries);
+        _realtimeRetries++;
+        Future.delayed(Duration(seconds: delaySec), () {
+          if (!mounted || _realtimeLessonId != lessonId) return;
+          _subscribeRealtime(lessonId);
+        });
       },
     );
   }
